@@ -1,12 +1,15 @@
 "use client";
 
+import { useState } from "react";
 import { MockBadge, t } from "@/components/ds";
-import { useSubstrateVerdicts, useZonePolygons } from "@/lib/clinical";
+import { useSubstrateVerdicts, useZonePolygons, resolveFitzpatrick } from "@/lib/clinical";
 import { SUBSTRATE_LABEL } from "@/lib/clinical/substrate";
 import { ZONE_LABEL } from "@/lib/clinical/zonePolygons";
 import type { AsymmetryFinding, AsymmetryLevel, Confidence, Readiness, Substrate, ZoneKey, ZoneVerdict } from "@/lib/clinical/types";
 import type { DiagnosisSkin } from "@/lib/types";
+import type { PatientContext, TierA } from "@/lib/context";
 import { numField } from "@/lib/util";
+import { ContextPromptCard, relevantPrompts } from "@/components/ContextPrompt";
 
 const SUBSTRATE_TONE: Record<Substrate, { fg: string; bg: string }> = {
   melanin_lentigo: { fg: t.amber, bg: t.amberSoft },
@@ -41,14 +44,29 @@ export function ZoneVerdictGrid({
   face,
   direction,
   skinType,
+  patientContext,
+  gender,
+  onContextChange,
 }: {
   face?: DiagnosisSkin;
   direction: -1 | 0 | 1;
   skinType?: number;
+  patientContext?: PatientContext | null;
+  gender?: number | null;
+  onContextChange?: (ctx: PatientContext) => void;
 }) {
   const { polygons, fromLandmarks } = useZonePolygons(face, direction);
-  const { loading, verdicts, findings, refs, error } = useSubstrateVerdicts(face, direction, skinType, polygons);
+  const { loading, verdicts, findings, refs, error } = useSubstrateVerdicts(
+    face,
+    direction,
+    skinType,
+    polygons,
+    patientContext ?? undefined,
+  );
   const list = Object.values(verdicts).filter((v): v is ZoneVerdict => !!v);
+
+  // Fitzpatrick resolution for display
+  const fitz = resolveFitzpatrick(face ?? null, null, patientContext ?? null);
 
   return (
     <section className="pt-8">
@@ -70,6 +88,20 @@ export function ZoneVerdictGrid({
           </div>
         </div>
         <div className="flex items-center gap-2">
+          {/* Fitzpatrick provenance badge */}
+          <span
+            className="font-mono-fine"
+            style={{
+              fontSize: 10.5,
+              padding: "3px 9px",
+              borderRadius: 3,
+              background: fitz.source === "override" ? t.claySoft : t.surfaceAlt,
+              color: fitz.source === "override" ? t.clay : t.muted,
+              border: `1px solid ${fitz.source === "override" ? `color-mix(in oklch, ${t.clay} 20%, transparent)` : t.hairline}`,
+            }}
+          >
+            Fitzpatrick: {fitz.label}
+          </span>
           {fromLandmarks && (
             <span
               className="font-mono-fine uppercase"
@@ -122,7 +154,13 @@ export function ZoneVerdictGrid({
 
       <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(3, 1fr)" }}>
         {list.map((v) => (
-          <ZoneCard key={v.zone} v={v} />
+          <ZoneCard
+            key={v.zone}
+            v={v}
+            patientContext={patientContext}
+            gender={gender}
+            onContextChange={onContextChange}
+          />
         ))}
       </div>
     </section>
@@ -242,8 +280,57 @@ function AsymmetryPanel({ findings }: { findings: AsymmetryFinding[] }) {
   );
 }
 
-function ZoneCard({ v }: { v: ZoneVerdict }) {
+function ZoneCard({
+  v,
+  patientContext,
+  gender,
+  onContextChange,
+}: {
+  v: ZoneVerdict;
+  patientContext?: PatientContext | null;
+  gender?: number | null;
+  onContextChange?: (ctx: PatientContext) => void;
+}) {
+  const [dismissedPrompts, setDismissedPrompts] = useState<string[]>([]);
   const tone = SUBSTRATE_TONE[v.substrate];
+
+  const activePrompts = relevantPrompts(v, gender, patientContext ?? null).filter(
+    (p) => !dismissedPrompts.includes(p.id),
+  );
+
+  function handleConfirm(flagKey: keyof TierA) {
+    const base = patientContext ?? {
+      tierA: {
+        valsalvaHx: false,
+        pregnancy: false,
+        hormonalContraception: false,
+        hfeKnownOrFerritinHigh: false,
+        recentSunExposure14d: false,
+        chiefComplaintNotes: "",
+      },
+      tierB: {
+        fitzpatrickOverride: null,
+        currentIsotretinoin: false,
+        keloidHx: false,
+        procedureLast6Weeks: false,
+        anticoagulants: false,
+        activeAcneInZone: [],
+        activeRosaceaFlare: false,
+      },
+      capturedAt: new Date().toISOString(),
+    };
+    const updated: PatientContext = {
+      ...base,
+      tierA: { ...base.tierA, [flagKey]: true },
+      capturedAt: new Date().toISOString(),
+      isSampleDefaults: false,
+    };
+    onContextChange?.(updated);
+  }
+
+  function handleDeny(promptId: string) {
+    setDismissedPrompts((prev) => [...prev, promptId]);
+  }
   return (
     <div
       style={{
@@ -360,6 +447,26 @@ function ZoneCard({ v }: { v: ZoneVerdict }) {
           ))}
         </ul>
       )}
+
+      {/* Context modifiers audit trail */}
+      {v.contextModifiers && v.contextModifiers.length > 0 && (
+        <div
+          className="font-mono-fine"
+          style={{ fontSize: 9.5, color: t.teal, marginTop: 4 }}
+        >
+          context: {v.contextModifiers.join(" · ")}
+        </div>
+      )}
+
+      {/* Contextual inline prompts */}
+      {activePrompts.map((prompt) => (
+        <ContextPromptCard
+          key={prompt.id}
+          prompt={prompt}
+          onConfirm={() => handleConfirm(prompt.flagKey)}
+          onDeny={() => handleDeny(prompt.id)}
+        />
+      ))}
     </div>
   );
 }

@@ -11,6 +11,7 @@ import {
   type ViewKey,
 } from "@/components/ds";
 import {
+  BloodworkScreen,
   CompareScreen,
   EmptyScreen,
   PlanScreen,
@@ -18,9 +19,11 @@ import {
   RoiScreen,
   SubstrateScreen,
 } from "@/components/screens";
+import { ContextModal } from "@/components/ContextModal";
 import type { ReportPayload } from "@/lib/types";
 import { numField } from "@/lib/util";
 import { rememberReport } from "@/lib/recent";
+import { loadContext, clearContext, type PatientContext } from "@/lib/context";
 
 type Source = "sample" | "live";
 const SAMPLE_ID = "00000000-0000-0000-0000-000000000000";
@@ -51,7 +54,7 @@ function readUrl(): PersistedView {
   if (typeof window === "undefined") return {};
   const sp = new URLSearchParams(window.location.search);
   const v = sp.get("view");
-  const view = v && ["report", "substrate", "compare", "roi", "plan"].includes(v)
+  const view = v && ["report", "substrate", "compare", "roi", "bloodwork", "plan"].includes(v)
     ? (v as ViewKey)
     : undefined;
   return {
@@ -95,6 +98,10 @@ function PageInner() {
   const [reportBLang, setReportBLang] = useState<string>("en");
   const [loadingB, setLoadingB] = useState(false);
   const [errorB, setErrorB] = useState<string | null>(null);
+
+  // Patient context (localStorage, keyed by diagnosisId)
+  const [patientContext, setPatientContext] = useState<PatientContext | null>(null);
+  const [contextModalOpen, setContextModalOpen] = useState(false);
 
   // ImageStack persistent settings
   const [baseField, setBaseField] = useState<string | undefined>(undefined);
@@ -285,6 +292,15 @@ function PageInner() {
     writeUrl(cur);
   }, [direction, baseField, overlays, view]);
 
+  // Load / refresh context whenever the diagnosis ID changes
+  useEffect(() => {
+    if (reportId) {
+      setPatientContext(loadContext(reportId));
+    } else {
+      setPatientContext(null);
+    }
+  }, [reportId]);
+
   const faces = useMemo(() => {
     if (!report) return [];
     return [...report.datas.diagnosis.diagnosisSkinList].sort(
@@ -346,8 +362,8 @@ function PageInner() {
         captured={diag.createTime ?? "—"}
         composite={compositeScore}
         mode={
-          /* Plan view is patient-global — direction doesn't apply. */
-          view === "plan" ? null : (
+          /* Plan + Bloodwork are patient-global — direction doesn't apply. */
+          view === "plan" || view === "bloodwork" ? null : (
             <DirSeg
               value={NUM_TO_DIR[direction]}
               onChange={(d) => setDirection(DIR_TO_NUM[d])}
@@ -358,6 +374,9 @@ function PageInner() {
         modeRight={
           <>
             <StatusPill state={isStale ? "stale" : "live"} age={isStale ? "sample" : undefined} />
+            <PillBtn sm onClick={() => setContextModalOpen(true)}>
+              Context{patientContext && !patientContext.isSampleDefaults ? " ✓" : ""}
+            </PillBtn>
             {view !== "compare" && (
               <PillBtn sm onClick={() => setView("compare")}>
                 Compare
@@ -399,7 +418,14 @@ function PageInner() {
         />
       )}
       {view === "substrate" && (
-        <SubstrateScreen face={currentFace} direction={direction} />
+        <SubstrateScreen
+          face={currentFace}
+          direction={direction}
+          patientContext={patientContext}
+          gender={diag.customerQueryResponse?.gender ?? report.datas.customer.gender}
+          onContextChange={(ctx) => setPatientContext(ctx)}
+          diagId={reportId}
+        />
       )}
       {view === "compare" && (
         <CompareScreen
@@ -414,6 +440,7 @@ function PageInner() {
         />
       )}
       {view === "roi" && <RoiScreen face={currentFace} direction={direction} />}
+      {view === "bloodwork" && <BloodworkScreen />}
       {view === "plan" && <PlanScreen />}
 
       <footer
@@ -438,6 +465,16 @@ function PageInner() {
           /api/img
         </span>
       </footer>
+
+      {contextModalOpen && (
+        <ContextModal
+          diagId={reportId}
+          chiefComplaintDefault={diag.customerQueryResponse?.diagnosisCc ?? report.datas.customer.diagnosisCc ?? ""}
+          isSample={isStale}
+          onClose={() => setContextModalOpen(false)}
+          onSave={(ctx) => setPatientContext(ctx)}
+        />
+      )}
     </div>
   );
 }

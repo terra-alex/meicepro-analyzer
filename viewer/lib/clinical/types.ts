@@ -106,6 +106,34 @@ export interface AsymmetryFinding {
   interpretation: string;
 }
 
+// ── Decision trace + per-channel reads (for the dynamic Interpretation UI) ──
+
+export type ChannelHeat = "hot" | "warm" | "cold" | "branching" | "neutral";
+
+export interface ChannelRead {
+  channel: ChannelKey;
+  /** Display name e.g. "deepRedMap", "brownMap", "bloodmap", "undereye mask". */
+  name: string;
+  /** Grouping label e.g. "Vascular · deep", "Pigment · epidermal". */
+  group: string;
+  /** Raw 0..1 mean from the sample (null if the channel failed). */
+  mean: number | null;
+  /** Optional binary-mask coverage 0..1 (e.g. undereye mask). */
+  coverage?: number;
+  heat: ChannelHeat;
+  /** One short clinical sentence — what this channel says for the verdict. */
+  explain: string;
+}
+
+export interface DecisionRow {
+  /** Left column — the rule signal. */
+  signal: string;
+  /** Middle column — how to read it. */
+  read: string;
+  /** Right column — what it lets us conclude. */
+  verdict: string;
+}
+
 export interface ZoneVerdict {
   zone: ZoneKey;
   substrate: Substrate;
@@ -129,4 +157,14 @@ export interface ZoneVerdict {
    * E.g. ["valsalvaHx+1", "hfeKnownOrFerritinHigh+1"]
    */
   contextModifiers?: string[];
+  /**
+   * Per-channel display reads — heat tier + one-line explanation.
+   * Drives the 4-channel Interpretation cards on the Substrate tab.
+   */
+  channelReads: ChannelRead[];
+  /**
+   * Ordered table of (signal, read, verdict) rows that justified this
+   * verdict. Drives the Logic table on the Substrate tab.
+   */
+  decisionTrace: DecisionRow[];
 }

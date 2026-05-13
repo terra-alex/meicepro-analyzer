@@ -6,3 +6,5 @@ export { useSubstrateVerdicts } from "./useSubstrateVerdicts";
 export { useZonePolygons } from "./useZonePolygons";
 export type { ZonePolygonMap } from "./useZonePolygons";
 export { sampleCache } from "./sampleCache";
+export { resolveFitzpatrick } from "./fitzpatrick";
+export type { ResolvedFitzpatrick, FitzpatrickSource } from "./fitzpatrick";
