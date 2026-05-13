@@ -1,6 +1,6 @@
 "use client";
 
-import { PillBtn, t } from "@/components/ds";
+import { MockBadge, PillBtn, t } from "@/components/ds";
 
 type PhaseState = "done" | "progress" | "pending";
 
@@ -127,15 +127,18 @@ export function PlanScreen() {
     <main className="px-7 pb-12">
       {/* Title block */}
       <section className="pt-8 pb-4 max-w-[1100px]">
-        <div
-          className="uppercase font-medium mb-2"
-          style={{
-            fontSize: 10.5,
-            letterSpacing: "0.18em",
-            color: t.clay,
-          }}
-        >
-          Treatment plan
+        <div className="flex items-center gap-3 mb-2">
+          <div
+            className="uppercase font-medium"
+            style={{
+              fontSize: 10.5,
+              letterSpacing: "0.18em",
+              color: t.clay,
+            }}
+          >
+            Treatment plan
+          </div>
+          <MockBadge>Template · derived from this scan&apos;s findings</MockBadge>
         </div>
         <h1
           className="font-serif-display"

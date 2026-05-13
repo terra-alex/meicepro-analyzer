@@ -1,6 +1,20 @@
 "use client";
 
-import { FacePlate, PillBtn, Spark, t } from "@/components/ds";
+import { FacePlate, MockBadge, PillBtn, Spark, t } from "@/components/ds";
+import type { DiagnosisSkin } from "@/lib/types";
+import { stringField } from "@/lib/util";
+
+const DIRECTION_LABEL: Record<-1 | 0 | 1, string> = {
+  [-1]: "Left",
+  [0]: "Front",
+  [1]: "Right",
+};
+
+function proxyUrl(raw?: string | null): string | null {
+  if (!raw) return null;
+  if (raw.includes("example.invalid")) return null;
+  return `/api/img?url=${encodeURIComponent(raw)}`;
+}
 
 type Scan = {
   date: string;
@@ -27,12 +41,20 @@ const LASSO: [number, number][] = [
   [30, 53], [22, 50],
 ];
 
-export function RoiScreen() {
+export function RoiScreen({
+  face,
+  direction,
+}: {
+  face?: DiagnosisSkin;
+  direction: -1 | 0 | 1;
+}) {
   const current = SCANS[SCANS.length - 1];
   const earliest = SCANS[0];
   const ironDeltaPct = Math.round(
     ((current.iron - earliest.iron) / earliest.iron) * 100,
   );
+  const dirLabel = DIRECTION_LABEL[direction];
+  const realDeepRed = face ? proxyUrl(stringField(face, "imgDeepRedMap")) : null;
 
   return (
     <main className="px-7 pb-12">
@@ -42,11 +64,14 @@ export function RoiScreen() {
         style={{ borderBottom: `1px solid ${t.hairline2}` }}
       >
         <div>
-          <div
-            className="uppercase font-medium mb-1.5"
-            style={{ fontSize: 10.5, letterSpacing: "0.12em", color: t.muted }}
-          >
-            Region of Interest · Periorbital crescent
+          <div className="flex items-center gap-3 mb-1.5">
+            <div
+              className="uppercase font-medium"
+              style={{ fontSize: 10.5, letterSpacing: "0.12em", color: t.muted }}
+            >
+              Region of Interest · Periorbital crescent · {dirLabel.toLowerCase()}
+            </div>
+            <MockBadge>Stub · lasso math not wired</MockBadge>
           </div>
           <h2
             className="font-serif-display"
@@ -92,8 +117,9 @@ export function RoiScreen() {
         {/* Drawing canvas */}
         <FacePlate
           kind="deepRed"
-          label="deepRedMap · periorbital"
+          label={`deepRedMap · periorbital · ${dirLabel.toLowerCase()}`}
           sub={`scan ${current.date}`}
+          bgImage={realDeepRed}
           style={{ height: 460 }}
         >
           {/* Polygon lasso overlay */}

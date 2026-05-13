@@ -11,5 +11,6 @@ export {
   PillBtn,
   Spark,
   FacePlate,
+  MockBadge,
 } from "./primitives";
 export type { Direction } from "./primitives";

@@ -20,6 +20,7 @@ import {
 } from "@/components/screens";
 import type { ReportPayload } from "@/lib/types";
 import { numField } from "@/lib/util";
+import { rememberReport } from "@/lib/recent";
 
 type Source = "sample" | "live";
 const SAMPLE_ID = "00000000-0000-0000-0000-000000000000";
@@ -142,6 +143,7 @@ function PageInner() {
         setSource("live");
         setReportId(id);
         setLang(language);
+        rememberReport(data, language);
         if (!opts.skipUrl) {
           const cur = readUrl();
           writeUrl({ ...cur, id, lang: language });
@@ -304,6 +306,11 @@ function PageInner() {
     return Math.round((report.datas.diagnosis.skinScore ?? 0) * 100);
   }, [report]);
 
+  const currentFace = useMemo(
+    () => faces.find((f) => f.direction === direction) ?? faces[0],
+    [faces, direction],
+  );
+
   // No report → empty state.
   if (!report) {
     return (
@@ -318,6 +325,7 @@ function PageInner() {
           onSample={loadSample}
           loading={loading}
           error={error}
+          onPickRecent={(entry) => loadLive(entry.id, entry.lang || "en")}
         />
       </div>
     );
@@ -338,18 +346,23 @@ function PageInner() {
         captured={diag.createTime ?? "—"}
         composite={compositeScore}
         mode={
-          <DirSeg
-            value={NUM_TO_DIR[direction]}
-            onChange={(d) => setDirection(DIR_TO_NUM[d])}
-            scores={dirScores}
-          />
+          /* Plan view is patient-global — direction doesn't apply. */
+          view === "plan" ? null : (
+            <DirSeg
+              value={NUM_TO_DIR[direction]}
+              onChange={(d) => setDirection(DIR_TO_NUM[d])}
+              scores={dirScores}
+            />
+          )
         }
         modeRight={
           <>
             <StatusPill state={isStale ? "stale" : "live"} age={isStale ? "sample" : undefined} />
-            <PillBtn sm onClick={() => setView("compare")}>
-              Compare
-            </PillBtn>
+            {view !== "compare" && (
+              <PillBtn sm onClick={() => setView("compare")}>
+                Compare
+              </PillBtn>
+            )}
             <PillBtn sm onClick={loadSample}>
               Reset
             </PillBtn>
@@ -385,7 +398,9 @@ function PageInner() {
           }}
         />
       )}
-      {view === "substrate" && <SubstrateScreen />}
+      {view === "substrate" && (
+        <SubstrateScreen face={currentFace} direction={direction} />
+      )}
       {view === "compare" && (
         <CompareScreen
           a={report}
@@ -398,7 +413,7 @@ function PageInner() {
           onClear={clearCompare}
         />
       )}
-      {view === "roi" && <RoiScreen />}
+      {view === "roi" && <RoiScreen face={currentFace} direction={direction} />}
       {view === "plan" && <PlanScreen />}
 
       <footer

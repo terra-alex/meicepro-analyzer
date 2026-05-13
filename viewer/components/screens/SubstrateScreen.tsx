@@ -1,6 +1,14 @@
 "use client";
 
-import { FacePlate, PillBtn, t } from "@/components/ds";
+import { FacePlate, MockBadge, PillBtn, t } from "@/components/ds";
+import type { DiagnosisSkin } from "@/lib/types";
+import { stringField } from "@/lib/util";
+
+const DIRECTION_LABEL: Record<-1 | 0 | 1, string> = {
+  [-1]: "Left",
+  [0]: "Front",
+  [1]: "Right",
+};
 
 type Heat = "hot" | "warm" | "cold" | "branching";
 
@@ -14,6 +22,10 @@ const HEAT: Record<Heat, { fg: string; bg: string; label: string }> = {
 type Channel = {
   key: "deepRed" | "brownmap" | "bloodmap" | "undereyeMask";
   faceKind: "deepRed" | "brownmap" | "bloodmap" | "uv";
+  // Field on DiagnosisSkin whose URL is the real image to render over the
+  // placeholder gradient when present. We never fake faces; if the URL is
+  // missing we fall back to the tinted FacePlate alone.
+  imgField: keyof DiagnosisSkin;
   name: string;
   group: string;
   mean: number;
@@ -27,6 +39,7 @@ const CHANNELS: Channel[] = [
   {
     key: "deepRed",
     faceKind: "deepRed",
+    imgField: "imgDeepRedMap",
     name: "deepRedMap",
     group: "Vascular · deep",
     mean: 0.72,
@@ -38,6 +51,7 @@ const CHANNELS: Channel[] = [
   {
     key: "brownmap",
     faceKind: "brownmap",
+    imgField: "imgBrownmap",
     name: "brownMap",
     group: "Pigment · epidermal",
     mean: 0.31,
@@ -49,6 +63,7 @@ const CHANNELS: Channel[] = [
   {
     key: "bloodmap",
     faceKind: "bloodmap",
+    imgField: "imgBloodmap",
     name: "bloodmap",
     group: "Vascular · surface",
     mean: 0.18,
@@ -60,6 +75,7 @@ const CHANNELS: Channel[] = [
   {
     key: "undereyeMask",
     faceKind: "uv",
+    imgField: "imgUndereyePng",
     name: "undereye mask",
     group: "Algorithm · detection",
     mean: 0.46,
@@ -69,6 +85,12 @@ const CHANNELS: Channel[] = [
     pattern: "branching",
   },
 ];
+
+function proxyUrl(raw?: string | null): string | null {
+  if (!raw) return null;
+  if (raw.includes("example.invalid")) return null;
+  return `/api/img?url=${encodeURIComponent(raw)}`;
+}
 
 function PatternOverlay({ pattern }: { pattern: Channel["pattern"] }) {
   // Tasteful pattern marks layered over the face plate to communicate
@@ -157,7 +179,14 @@ function PatternOverlay({ pattern }: { pattern: Channel["pattern"] }) {
   );
 }
 
-export function SubstrateScreen() {
+export function SubstrateScreen({
+  face,
+  direction,
+}: {
+  face?: DiagnosisSkin;
+  direction: -1 | 0 | 1;
+}) {
+  const dirLabel = DIRECTION_LABEL[direction];
   return (
     <main className="px-7 pb-12">
       {/* Focus header */}
@@ -169,11 +198,14 @@ export function SubstrateScreen() {
         }}
       >
         <div>
-          <div
-            className="uppercase font-medium mb-1.5"
-            style={{ fontSize: 10.5, letterSpacing: "0.12em", color: t.muted }}
-          >
-            Substrate inspector · Front face
+          <div className="flex items-center gap-3 mb-1.5">
+            <div
+              className="uppercase font-medium"
+              style={{ fontSize: 10.5, letterSpacing: "0.12em", color: t.muted }}
+            >
+              Substrate inspector · {dirLabel} face
+            </div>
+            <MockBadge>Worked example · heat values mock</MockBadge>
           </div>
           <h2
             className="font-serif-display"
@@ -188,7 +220,7 @@ export function SubstrateScreen() {
                 fontStyle: "italic",
               }}
             >
-              both eyes
+              {direction === 0 ? "both eyes" : `${dirLabel.toLowerCase()} side`}
             </span>
           </h2>
           <div
@@ -232,6 +264,9 @@ export function SubstrateScreen() {
             const delta = c.mean - c.prev;
             const trend = delta > 0 ? "↑" : delta < 0 ? "↓" : "→";
             const hs = HEAT[c.heat];
+            const realUrl = face
+              ? proxyUrl(stringField(face, c.imgField as string))
+              : null;
             return (
               <div
                 key={c.key}
@@ -247,9 +282,10 @@ export function SubstrateScreen() {
                   kind={c.faceKind}
                   label={c.name}
                   sub={c.group}
+                  bgImage={realUrl}
                   style={{ height: 230, margin: 12, marginBottom: 0 }}
                 >
-                  <PatternOverlay pattern={c.pattern} />
+                  {!realUrl && <PatternOverlay pattern={c.pattern} />}
                   {/* ROI bracket — same crescent on every panel */}
                   <div
                     style={{

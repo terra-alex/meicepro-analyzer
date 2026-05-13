@@ -31,7 +31,8 @@ function deltaBadge(d: number, smaller: number = 3) {
 }
 
 export default function ComparePanel({ a, b, loading, error, direction, onLoad, onSwap, onClear }: Props) {
-  const [open, setOpen] = useState(b !== null);
+  // Default open — the Compare view is the whole point of the screen.
+  const [open, setOpen] = useState(true);
   const aFace = faceFor(a, direction);
   const bFace = b ? faceFor(b, direction) : null;
 

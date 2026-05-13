@@ -1,29 +1,26 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { PillBtn, StatusPill, t } from "@/components/ds";
-
-type Recent = { id: string; subj: string; name: string; date: string; composite: number };
-
-const RECENT_FALLBACK: Recent[] = [
-  { id: "4b6f68e4", subj: "MC-2104", name: "Alex V.", date: "25 Apr 2026", composite: 69 },
-  { id: "e9132adc", subj: "MC-1987", name: "Helen R.", date: "22 Apr 2026", composite: 81 },
-  { id: "71fe004b", subj: "MC-2061", name: "Joon K.", date: "18 Apr 2026", composite: 74 },
-];
+import { listRecent, type RecentEntry } from "@/lib/recent";
 
 export function EmptyScreen({
   onSubmit,
   onSample,
   loading,
   error,
-  recent = RECENT_FALLBACK,
+  onPickRecent,
 }: {
   onSubmit: (id: string, lang: string) => void;
   onSample: () => void;
   loading: boolean;
   error: string | null;
-  recent?: Recent[];
+  onPickRecent?: (entry: RecentEntry) => void;
 }) {
+  const [recent, setRecent] = useState<RecentEntry[]>([]);
+  useEffect(() => {
+    setRecent(listRecent());
+  }, []);
   const [id, setId] = useState("");
   const [lang, setLang] = useState("en");
   const [howOpen, setHowOpen] = useState(true);
@@ -191,67 +188,76 @@ export function EmptyScreen({
           </form>
 
           {/* Recent on this device */}
-          <div className="mt-10">
-            <div
-              className="uppercase font-medium mb-3"
-              style={{ fontSize: 10.5, letterSpacing: "0.12em", color: t.muted }}
-            >
-              Recent on this device
-            </div>
-            <div
-              style={{
-                background: t.surface,
-                border: `1px solid ${t.hairline}`,
-                borderRadius: 6,
-                overflow: "hidden",
-              }}
-            >
-              {recent.map((r, i) => (
-                <div
-                  key={r.id}
-                  className="grid items-center gap-3 px-4 py-3.5"
-                  style={{
-                    gridTemplateColumns: "1fr auto auto",
-                    borderTop: i === 0 ? "none" : `1px solid ${t.hairline2}`,
-                  }}
-                >
-                  <div>
-                    <div
-                      style={{ fontSize: 13, color: t.ink, fontWeight: 500 }}
-                    >
-                      {r.name}
+          {recent.length > 0 && (
+            <div className="mt-10">
+              <div
+                className="uppercase font-medium mb-3"
+                style={{ fontSize: 10.5, letterSpacing: "0.12em", color: t.muted }}
+              >
+                Recent on this device
+              </div>
+              <div
+                style={{
+                  background: t.surface,
+                  border: `1px solid ${t.hairline}`,
+                  borderRadius: 6,
+                  overflow: "hidden",
+                }}
+              >
+                {recent.slice(0, 5).map((r, i) => (
+                  <button
+                    key={r.id}
+                    type="button"
+                    onClick={() =>
+                      onPickRecent
+                        ? onPickRecent(r)
+                        : onSubmit(r.id, r.lang || "en")
+                    }
+                    className="w-full grid items-center gap-3 px-4 py-3.5 text-left cursor-pointer transition-colors hover:bg-[var(--surface-alt)]"
+                    style={{
+                      gridTemplateColumns: "1fr auto auto",
+                      borderTop: i === 0 ? "none" : `1px solid ${t.hairline2}`,
+                      background: "transparent",
+                      border: "none",
+                      fontFamily: "inherit",
+                    }}
+                  >
+                    <div>
+                      <div style={{ fontSize: 13, color: t.ink, fontWeight: 500 }}>
+                        {r.name}
+                      </div>
+                      <div
+                        className="font-mono-fine"
+                        style={{ fontSize: 11, color: t.muted }}
+                      >
+                        {r.subject} · {r.shortId}…
+                      </div>
                     </div>
                     <div
                       className="font-mono-fine"
                       style={{ fontSize: 11, color: t.muted }}
                     >
-                      {r.subj} · {r.id}…
+                      {r.date}
                     </div>
-                  </div>
-                  <div
-                    className="font-mono-fine"
-                    style={{ fontSize: 11, color: t.muted }}
-                  >
-                    {r.date}
-                  </div>
-                  <div className="flex items-baseline gap-1">
-                    <span
-                      className="font-serif-display"
-                      style={{ fontSize: 20, color: t.ink }}
-                    >
-                      {r.composite}
-                    </span>
-                    <span
-                      className="font-mono-fine"
-                      style={{ fontSize: 9.5, color: t.faint }}
-                    >
-                      /100
-                    </span>
-                  </div>
-                </div>
-              ))}
+                    <div className="flex items-baseline gap-1">
+                      <span
+                        className="font-serif-display"
+                        style={{ fontSize: 20, color: t.ink }}
+                      >
+                        {r.composite ?? "—"}
+                      </span>
+                      <span
+                        className="font-mono-fine"
+                        style={{ fontSize: 9.5, color: t.faint }}
+                      >
+                        /100
+                      </span>
+                    </div>
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* How it works */}
           <div className="mt-10">

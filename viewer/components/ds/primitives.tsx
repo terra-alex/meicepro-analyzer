@@ -80,6 +80,35 @@ export function ScoreChip({
 }
 
 /* ─────────────────────────────────────────────────────────────────
+ * MockBadge — small inline pill that flags hardcoded / template
+ * content so users don't act on its values.
+ * ──────────────────────────────────────────────────────────────── */
+export function MockBadge({ children }: { children?: React.ReactNode }) {
+  return (
+    <span
+      className="font-mono-fine uppercase inline-flex items-center gap-1.5"
+      style={{
+        padding: "3px 9px",
+        borderRadius: 3,
+        background: t.claySoft,
+        color: t.clay,
+        border: `1px solid color-mix(in oklch, ${t.clay} 20%, transparent)`,
+        fontSize: 9.5,
+        letterSpacing: "0.10em",
+        fontWeight: 600,
+      }}
+    >
+      <svg width="9" height="9" viewBox="0 0 12 12" aria-hidden>
+        <circle cx="6" cy="6" r="5" fill="none" stroke={t.clay} strokeWidth="1.1" />
+        <path d="M6 3.5 V6.5" stroke={t.clay} strokeWidth="1.2" strokeLinecap="round" />
+        <circle cx="6" cy="8.5" r="0.6" fill={t.clay} />
+      </svg>
+      {children ?? "Template · mock content"}
+    </span>
+  );
+}
+
+/* ─────────────────────────────────────────────────────────────────
  * SectionTitle — kicker + title with optional right slot.
  * ──────────────────────────────────────────────────────────────── */
 export function SectionTitle({
@@ -293,6 +322,7 @@ export function FacePlate({
   style,
   dim = false,
   className,
+  bgImage,
 }: {
   kind?: keyof typeof channelGradient;
   label?: string;
@@ -301,9 +331,12 @@ export function FacePlate({
   style?: React.CSSProperties;
   dim?: boolean;
   className?: string;
+  // When provided, render this URL as the plate background (covers the
+  // gradient placeholder). Real OSS images render via this prop; the
+  // gradient is only shown when bgImage is absent or fails to load.
+  bgImage?: string | null;
 }) {
   const grad = channelGradient[kind] ?? channelGradient.daylight;
-  // Make the SVG def id unique enough across many simultaneous instances.
   const slug = `fp-${kind}-${Math.random().toString(36).slice(2, 7)}`;
   return (
     <div
@@ -317,6 +350,16 @@ export function FacePlate({
         ...style,
       }}
     >
+      {bgImage && (
+        /* eslint-disable-next-line @next/next/no-img-element */
+        <img
+          src={bgImage}
+          alt=""
+          draggable={false}
+          aria-hidden
+          className="absolute inset-0 w-full h-full object-cover"
+        />
+      )}
       <svg
         viewBox="0 0 400 500"
         preserveAspectRatio="xMidYMid slice"
@@ -325,7 +368,7 @@ export function FacePlate({
           inset: 0,
           width: "100%",
           height: "100%",
-          opacity: dim ? 0.18 : 0.22,
+          opacity: bgImage ? 0 : dim ? 0.18 : 0.22,
           mixBlendMode: "overlay",
         }}
         aria-hidden
@@ -344,7 +387,7 @@ export function FacePlate({
         style={{
           position: "absolute",
           inset: 0,
-          opacity: 0.08,
+          opacity: bgImage ? 0 : 0.08,
           backgroundImage:
             "repeating-linear-gradient(0deg, #fff 0 1px, transparent 1px 3px)",
         }}
