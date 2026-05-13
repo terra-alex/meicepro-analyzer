@@ -6,7 +6,9 @@ import type { PatientContext } from "@/lib/context";
 import { saveContext } from "@/lib/context";
 import { useSubstrateVerdicts, useZonePolygons } from "@/lib/clinical";
 import type { ZoneKey } from "@/lib/clinical/types";
+import { stringField } from "@/lib/util";
 import { FocusZonePanel } from "./FocusZonePanel";
+import { DebugExport } from "./DebugExport";
 import {
   ZoneVerdictGrid,
   fitzpatrickFromFace,
@@ -20,10 +22,8 @@ import {
  *   values. The focus zone is clickable from the chip strip.
  * - Verdict grid (bottom): every zone the algorithm computed for this
  *   direction, including asymmetry findings when on the front capture.
- *
- * Both the panel and the grid run their own `useSubstrateVerdicts` hook —
- * `sampleCache` deduplicates the canvas work so the second call is a
- * cache-hit storm rather than re-sampling pixels.
+ * - Debug export (top right): copies raw chroma + baselines + coverage as
+ *   JSON for threshold-tuning conversations.
  */
 export function SubstrateScreen({
   face,
@@ -41,13 +41,31 @@ export function SubstrateScreen({
   diagId?: string;
 }) {
   const [focusZone, setFocusZone] = useState<ZoneKey | undefined>(undefined);
+  const skinType = fitzpatrickFromFace(face);
+  const { polygons, fromLandmarks } = useZonePolygons(face, direction);
+  const { verdicts, refs } = useSubstrateVerdicts(face, direction, skinType, polygons);
+
+  const scanId = face ? stringField(face, "id") ?? undefined : undefined;
 
   return (
     <main className="px-7 pb-12">
-      <FocusZonePanelLive
+      <div
+        className="flex justify-end pt-4"
+        style={{ marginBottom: -8 }}
+      >
+        <DebugExport
+          verdicts={verdicts}
+          refs={refs}
+          scanId={scanId}
+          direction={direction}
+          fromLandmarks={fromLandmarks}
+        />
+      </div>
+
+      <FocusZonePanel
         face={face}
         direction={direction}
-        skinType={fitzpatrickFromFace(face)}
+        verdicts={verdicts}
         focusZone={focusZone}
         onFocusZoneChange={setFocusZone}
       />
@@ -55,7 +73,7 @@ export function SubstrateScreen({
       <ZoneVerdictGrid
         face={face}
         direction={direction}
-        skinType={fitzpatrickFromFace(face)}
+        skinType={skinType}
         patientContext={patientContext}
         gender={gender}
         onContextChange={(ctx) => {
@@ -64,36 +82,5 @@ export function SubstrateScreen({
         }}
       />
     </main>
-  );
-}
-
-/**
- * Thin wrapper that runs the verdicts hook so FocusZonePanel can stay
- * presentation-only. Kept here (rather than inside FocusZonePanel) so the
- * panel is trivially testable with hand-built verdicts.
- */
-function FocusZonePanelLive({
-  face,
-  direction,
-  skinType,
-  focusZone,
-  onFocusZoneChange,
-}: {
-  face?: DiagnosisSkin;
-  direction: -1 | 0 | 1;
-  skinType?: number;
-  focusZone?: ZoneKey;
-  onFocusZoneChange?: (z: ZoneKey) => void;
-}) {
-  const { polygons } = useZonePolygons(face, direction);
-  const { verdicts } = useSubstrateVerdicts(face, direction, skinType, polygons);
-  return (
-    <FocusZonePanel
-      face={face}
-      direction={direction}
-      verdicts={verdicts}
-      focusZone={focusZone}
-      onFocusZoneChange={onFocusZoneChange}
-    />
   );
 }

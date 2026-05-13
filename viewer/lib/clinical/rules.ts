@@ -4,36 +4,45 @@
 
 import type { Substrate } from "./types";
 
+// NOTE: as of v2 the engine measures **chromatic saturation** of each
+// false-color heatmap channel (mean of `(max-min)/255` per pixel inside the
+// polygon), NOT RGB brightness. Chroma is bounded ~0..0.6 in practice: gray
+// skin ~0.05, faint heatmap overlay ~0.10–0.20, saturated overlay ~0.30+.
+// All `*Hemo` / `*Telan` / `*Melanin` thresholds are now in chroma units.
+// All vascular / pigment channels additionally have their nose- or forehead-
+// baseline chroma subtracted before comparison — see References.
 export const THRESHOLDS = {
-  // Hemosiderin: deepRedMap warm, brownMap cold relative, bloodmap cold absolute.
-  deepRedHemo: 0.4,
-  brownColdRelative: 0.1, // brownMap < deepRedMap - 0.10
-  bloodColdHemo: 0.2,
+  // Hemosiderin: deepRedMap chroma elevated (baseline-subtracted),
+  // brownMap cold relative, bloodmap cold absolute.
+  deepRedHemo: 0.12, // chroma delta vs nose baseline
+  brownColdRelative: 0.06, // brownMap chroma < deepRed chroma - 0.06
+  bloodColdHemo: 0.08, // bloodMap chroma delta vs nose baseline
 
-  // Telangiectasia
-  bloodHotTelan: 0.35,
-  redmapHotTelan: 0.4,
+  // Telangiectasia — needs both saturation AND coverage to fire
+  bloodHotTelan: 0.15, // chroma delta vs nose baseline
+  bloodCoverageTelan: 0.12, // ≥12% of zone pixels strongly lit
+  redmapHotTelan: 0.15,
 
   // Melanin
-  brownDeltaMelanin: 0.15, // delta vs forehead reference
+  brownDeltaMelanin: 0.08, // chroma delta vs forehead reference
   brownSpotCoverageLentigo: 0.05, // ≥5% of zone pixels in brownSpot mask
-  brownAbsoluteFallback: 0.5, // used when reference zone is dirty
+  brownAbsoluteFallback: 0.2, // chroma, used when reference zone is dirty
 
   // Inflammation
   sensitiveWarn: 0.1,
   sensitiveHigh: 0.2,
 
-  // Hypopigmentation (vitiligo flag)
-  brownDeltaHypo: -0.1,
+  // Hypopigmentation (vitiligo flag) — chroma delta below baseline
+  brownDeltaHypo: -0.04,
 
   // Mixed: primary/secondary ratio cutoff for "unambiguous"
   primaryRatio: 1.5,
 
-  // Occlusion
-  occludedMaxMean: 0.05,
+  // Occlusion — chroma near zero across primary channels
+  occludedMaxMean: 0.03,
 
-  // Reference-dirty trigger
-  referenceDirtyBrown: 0.55,
+  // Reference-dirty trigger — forehead itself reading as melanin-hot
+  referenceDirtyBrown: 0.22,
 
   // Asymmetry
   asymmetryRatioMild: 1.3,

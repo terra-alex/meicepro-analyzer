@@ -103,8 +103,14 @@ export async function sampleZone(
     return { channel, error: "taint" };
   }
 
-  let sumR = 0, sumG = 0, sumB = 0, n = 0, masked = 0;
+  let sumR = 0, sumG = 0, sumB = 0, sumChroma = 0, n = 0;
+  let masked = 0;        // pixels above maskCutoff brightness (for binary masks)
+  let chromaHits = 0;    // pixels with strong colour signal (for heatmaps)
   const cutoff = opts.maskCutoff;
+  // 0..1 cutoff for "this pixel is genuinely lit up in the heatmap, not skin gray".
+  // 0.18 ≈ 46/255 — generously above typical skin tone chroma (~0.05–0.10) while
+  // catching faint heatmap signal that's clearly coloured rather than gray.
+  const CHROMA_HOT = 0.18;
   for (let y = 0; y < bh; y++) {
     const py = (by + y) / H;
     for (let x = 0; x < bw; x++) {
@@ -115,15 +121,20 @@ export async function sampleZone(
       sumR += r;
       sumG += g;
       sumB += b;
+      // Chromatic saturation away from grayscale: 0 for pure gray skin,
+      // ~0.3–0.6 for a saturated false-color heatmap overlay pixel.
+      const chroma = (Math.max(r, g, b) - Math.min(r, g, b)) / 255;
+      sumChroma += chroma;
+      if (chroma > CHROMA_HOT) chromaHits++;
       n++;
       if (cutoff != null && (r + g + b) / 3 > cutoff) masked++;
     }
   }
   if (n === 0) return { channel, error: "decode" };
 
-  // Channel-specific mean: for red-dominant maps, average R; for brown, avg of R+G; etc.
-  // Use perceived intensity (mean of RGB / 255) as a single scalar — robust for false-colour maps.
   const meanRGB = (sumR + sumG + sumB) / (3 * n) / 255;
+  const chroma = sumChroma / n;
+  const chromaCoverage = chromaHits / n;
   const coverage = cutoff != null ? masked / n : undefined;
-  return { channel, mean: meanRGB, coverage };
+  return { channel, mean: meanRGB, chroma, chromaCoverage, coverage };
 }

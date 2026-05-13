@@ -76,8 +76,10 @@ export function computeAsymmetry(
     if (!leftVerdict || !rightVerdict) continue;
 
     for (const channel of CHANNELS_OF_INTEREST) {
-      const leftMean = leftVerdict.samples.find((s) => s.channel === channel)?.mean;
-      const rightMean = rightVerdict.samples.find((s) => s.channel === channel)?.mean;
+      // Asymmetry uses chroma (false-color saturation), same metric the
+      // verdict engine uses — keeps the ratio meaningful.
+      const leftMean = leftVerdict.samples.find((s) => s.channel === channel)?.chroma;
+      const rightMean = rightVerdict.samples.find((s) => s.channel === channel)?.chroma;
 
       // Skip if either side has no usable sample.
       if (leftMean == null || rightMean == null) continue;

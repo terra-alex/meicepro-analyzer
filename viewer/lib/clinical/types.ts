@@ -56,9 +56,23 @@ export interface NormPoint {
 
 export interface ZoneSample {
   channel: ChannelKey;
-  /** 0..1 normalised mean intensity inside the zone polygon. */
+  /** 0..1 normalised mean RGB intensity inside the zone polygon (legacy). */
   mean: number;
-  /** Optional mask coverage 0..1 — fraction of zone pixels above a binary cutoff. */
+  /**
+   * 0..1 chromatic saturation — mean of `(max(R,G,B) - min(R,G,B)) / 255`
+   * inside the polygon. False-color heatmaps overlay saturated colour
+   * where the algorithm detected signal; underlying skin is near-gray.
+   * This is the right scalar for heatmap channels (deepRedMap, brownMap,
+   * bloodMap, redMap, deepBrownMap) — independent of overall brightness.
+   */
+  chroma: number;
+  /**
+   * 0..1 — fraction of pixels with chroma above a strong-signal cutoff.
+   * Captures "what fraction of the zone is genuinely lit up" rather than
+   * "what's the average brightness."
+   */
+  chromaCoverage: number;
+  /** Optional mask coverage 0..1 — fraction of zone pixels above a brightness cutoff. */
   coverage?: number;
 }
 
@@ -75,10 +89,17 @@ export function isSample(s: SampleOrFail): s is ZoneSample {
 
 /** Within-scan reference baselines used for normalisation. */
 export interface References {
-  /** brownMap mean of forehead/glabella reference, if available. */
+  /** brownMap chroma of forehead/glabella reference, if available. */
   brownBaseline?: number;
-  /** deepRedMap mean of the nasal bridge reference, if available. */
+  /** deepRedMap chroma of the nasal bridge reference, if available. */
   deepRedBaseline?: number;
+  /**
+   * bloodMap chroma of the nasal bridge reference, if available. Nose has
+   * baseline surface vascularity but no eyelid pinkness — subtracting it
+   * from every zone's bloodMap reading avoids reading eyelid-skin baseline
+   * as "active telangiectasia."
+   */
+  bloodBaseline?: number;
   /** Whether the reference zone is itself hot → low-confidence fallback. */
   referenceDirty: boolean;
   /** Fitzpatrick 1..6 from API (algorithm-derived preferred over self-report). */

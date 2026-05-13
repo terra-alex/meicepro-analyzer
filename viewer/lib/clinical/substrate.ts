@@ -38,41 +38,46 @@ const DISPLAY_CHANNELS: DisplayChannel[] = [
   { channel: "undereyeMask", name: "undereye mask", group: "Algorithm · detection" },
 ];
 
+/**
+ * Heat tier for a CHANNEL READ (display only). Operates on chroma for
+ * heatmap channels (baseline-subtracted when refs available) and on
+ * coverage for the mask channels.
+ */
 function heatFor(
   channel: ChannelKey,
-  mean: number | null,
-  coverage: number | undefined,
+  sample: ZoneSample | undefined,
   refs: References,
 ): ChannelHeat {
-  if (mean == null) return "neutral";
+  if (!sample) return "neutral";
   switch (channel) {
     case "deepRedMap": {
-      if (mean > 0.55) return "hot";
-      if (mean > THRESHOLDS.deepRedHemo) return "warm";
-      if (mean < 0.25) return "cold";
+      const d = sample.chroma - (refs.deepRedBaseline ?? 0);
+      if (d > THRESHOLDS.deepRedHemo + 0.06) return "hot";
+      if (d > THRESHOLDS.deepRedHemo) return "warm";
+      if (d < -0.03) return "cold";
       return "neutral";
     }
     case "brownMap": {
       const base = refs.brownBaseline;
       if (base != null && !refs.referenceDirty) {
-        const d = mean - base;
-        if (d > THRESHOLDS.brownDeltaMelanin + 0.1) return "hot";
+        const d = sample.chroma - base;
+        if (d > THRESHOLDS.brownDeltaMelanin + 0.06) return "hot";
         if (d > THRESHOLDS.brownDeltaMelanin) return "warm";
-        if (d < -0.05) return "cold";
+        if (d < -0.03) return "cold";
         return "neutral";
       }
-      if (mean > 0.6) return "hot";
-      if (mean > THRESHOLDS.brownAbsoluteFallback) return "warm";
-      if (mean < 0.25) return "cold";
+      if (sample.chroma > THRESHOLDS.brownAbsoluteFallback) return "hot";
+      if (sample.chroma > THRESHOLDS.brownAbsoluteFallback * 0.8) return "warm";
       return "neutral";
     }
     case "bloodMap": {
-      if (mean > THRESHOLDS.bloodHotTelan) return "hot";
-      if (mean > THRESHOLDS.bloodColdHemo) return "warm";
+      const d = sample.chroma - (refs.bloodBaseline ?? 0);
+      if (d > THRESHOLDS.bloodHotTelan) return "hot";
+      if (d > THRESHOLDS.bloodColdHemo) return "warm";
       return "cold";
     }
     case "undereyeMask": {
-      const cov = coverage ?? mean;
+      const cov = sample.coverage ?? sample.mean;
       if (cov > 0.4) return "branching";
       if (cov > 0.2) return "warm";
       return "cold";
@@ -138,9 +143,13 @@ function buildChannelReads(
   return DISPLAY_CHANNELS.map((dc) => {
     const s = samples.find((x) => x.channel === dc.channel);
     const f = failed.find((x) => x.channel === dc.channel);
-    const mean = s?.mean ?? null;
-    const coverage = s?.coverage;
-    const heat: ChannelHeat = f ? "neutral" : heatFor(dc.channel, mean, coverage, refs);
+    // For heatmap channels, the displayed scalar is CHROMA (saturation).
+    // For mask channels, fall back to mean RGB so the card still shows
+    // something useful when nothing else applies.
+    const isMask = dc.channel === "undereyeMask";
+    const displayed = s ? (isMask ? s.mean : s.chroma) : null;
+    const coverage = s?.coverage ?? (isMask ? undefined : s?.chromaCoverage);
+    const heat: ChannelHeat = f ? "neutral" : heatFor(dc.channel, s, refs);
     const explain = f
       ? "Channel image unavailable for this zone."
       : explainFor(dc.channel, heat, substrate, zone);
@@ -148,7 +157,7 @@ function buildChannelReads(
       channel: dc.channel,
       name: dc.name,
       group: dc.group,
-      mean,
+      mean: displayed,
       coverage,
       heat,
       explain,
@@ -166,9 +175,14 @@ function traceFor(
   samples: ZoneSample[],
   refs: References,
 ): DecisionRow[] {
-  const dr = samples.find((s) => s.channel === "deepRedMap")?.mean;
-  const br = samples.find((s) => s.channel === "brownMap")?.mean;
-  const bl = samples.find((s) => s.channel === "bloodMap")?.mean;
+  // Trace uses chroma deltas (baseline-subtracted) — same units the
+  // decision rules compared against.
+  const drRaw = samples.find((s) => s.channel === "deepRedMap")?.chroma;
+  const brRaw = samples.find((s) => s.channel === "brownMap")?.chroma;
+  const blRaw = samples.find((s) => s.channel === "bloodMap")?.chroma;
+  const dr = drRaw != null ? drRaw - (refs.deepRedBaseline ?? 0) : undefined;
+  const br = brRaw != null ? brRaw - (refs.brownBaseline ?? 0) : undefined;
+  const bl = blRaw != null ? blRaw - (refs.bloodBaseline ?? 0) : undefined;
   const undereye = samples.find((s) => s.channel === "undereyeMask");
   const brownSpot = samples.find((s) => s.channel === "brownSpotMask");
   const sensitive = samples.find((s) => s.channel === "sensitiveAreaMask");
@@ -335,8 +349,24 @@ function traceFor(
 function pick(samples: ZoneSample[], k: ChannelKey): number | undefined {
   return samples.find((s) => s.channel === k)?.mean;
 }
+/**
+ * Read the chroma scalar for a heatmap channel — this is what the
+ * thresholds in `rules.ts` actually compare against, not raw RGB mean.
+ */
+function chroma(samples: ZoneSample[], k: ChannelKey): number | undefined {
+  return samples.find((s) => s.channel === k)?.chroma;
+}
+function chromaCov(samples: ZoneSample[], k: ChannelKey): number | undefined {
+  return samples.find((s) => s.channel === k)?.chromaCoverage;
+}
 function coverage(samples: ZoneSample[], k: ChannelKey): number | undefined {
   return samples.find((s) => s.channel === k)?.coverage;
+}
+/** Subtract a baseline if present; otherwise return raw value. */
+function delta(v: number | undefined, base: number | undefined): number | undefined {
+  if (v == null) return undefined;
+  if (base == null) return v;
+  return v - base;
 }
 
 function confidenceFromEvidence(score: number): Confidence {
@@ -384,28 +414,37 @@ export function verdictFromSignals(
       "All channels failed to load or were unavailable.", refs);
   }
 
-  const deepRed = pick(samples, "deepRedMap");
-  const brown = pick(samples, "brownMap");
-  const blood = pick(samples, "bloodMap");
-  const red = pick(samples, "redMap");
-  const deepBrown = pick(samples, "deepBrownMap");
+  // Use chroma (false-color saturation) for heatmap channels — measures
+  // "how strongly is this channel firing" rather than overall brightness.
+  // Baseline-subtract against the reference zones so eyelid pinkness or
+  // tanned skin tone doesn't masquerade as channel signal.
+  const deepRedRaw = chroma(samples, "deepRedMap");
+  const brownRaw = chroma(samples, "brownMap");
+  const bloodRaw = chroma(samples, "bloodMap");
+  const redRaw = chroma(samples, "redMap");
+  const deepBrownRaw = chroma(samples, "deepBrownMap");
+  const deepRed = delta(deepRedRaw, refs.deepRedBaseline);
+  const brown = delta(brownRaw, refs.brownBaseline);
+  const blood = delta(bloodRaw, refs.bloodBaseline);
+  const red = delta(redRaw, refs.bloodBaseline);
+  const deepBrown = delta(deepBrownRaw, refs.brownBaseline);
+  const bloodCovHits = chromaCov(samples, "bloodMap");
   const undereye = coverage(samples, "undereyeMask") ?? pick(samples, "undereyeMask");
   const brownSpotCov = coverage(samples, "brownSpotMask");
   const sensitive = coverage(samples, "sensitiveAreaMask");
 
-  // Occlusion: all primary channels abnormally low.
-  const primaries = [deepRed, brown, blood].filter((v): v is number => v != null);
-  if (primaries.length >= 2 && primaries.every((v) => v < THRESHOLDS.occludedMaxMean)) {
+  // Occlusion: all primary channels' raw chroma near zero (no signal at all).
+  const primariesRaw = [deepRedRaw, brownRaw, bloodRaw].filter((v): v is number => v != null);
+  if (primariesRaw.length >= 2 && primariesRaw.every((v) => v < THRESHOLDS.occludedMaxMean)) {
     return baseVerdict(zone, "occluded", "low", 0, samples, failed,
       "All primary channels below noise floor — likely occluded.", refs);
   }
 
-  // Hypopigmentation guard — delta brownMap well below baseline.
+  // Hypopigmentation guard — chroma well below baseline (signals less than skin).
   if (brown != null && refs.brownBaseline != null && !refs.referenceDirty) {
-    const dBrown = brown - refs.brownBaseline;
-    if (dBrown < THRESHOLDS.brownDeltaHypo) {
+    if (brown < THRESHOLDS.brownDeltaHypo) {
       return baseVerdict(zone, "hypopigmentation", "moderate", 2, samples, failed,
-        `brownMap is ${Math.abs(dBrown).toFixed(2)} below reference — possible vitiligo / hypopigmentation.`, refs);
+        `brownMap chroma is ${Math.abs(brown).toFixed(2)} below reference — possible vitiligo / hypopigmentation.`, refs);
     }
   }
 
@@ -415,14 +454,17 @@ export function verdictFromSignals(
       `sensitiveArea covers ${(sensitive * 100).toFixed(0)}% of zone — inflammation dominates substrate read.`, refs);
   }
 
-  // Decide melanin vs hemosiderin vs telangiectasia.
+  // Decide melanin vs hemosiderin vs telangiectasia (all values are now
+  // baseline-subtracted chroma deltas — 0 = same as reference, +0.1 = clearly
+  // hot, negative = colder than reference).
   let evidence = 0;
   let substrate: Substrate = "unclear";
   let rationale = "Channels do not clearly favour one substrate.";
 
+  // Melanin threshold is the chroma delta directly when reference is clean.
   const brownThreshold = refs.referenceDirty
-    ? THRESHOLDS.brownAbsoluteFallback
-    : (refs.brownBaseline ?? 0.3) + THRESHOLDS.brownDeltaMelanin;
+    ? THRESHOLDS.brownAbsoluteFallback - (refs.brownBaseline ?? 0)
+    : THRESHOLDS.brownDeltaMelanin;
 
   const hemoCandidate =
     deepRed != null &&
@@ -432,8 +474,12 @@ export function verdictFromSignals(
     brown < deepRed - THRESHOLDS.brownColdRelative &&
     blood < THRESHOLDS.bloodColdHemo;
 
+  // Telangiectasia needs BOTH saturation AND coverage — a bright eyelid
+  // baseline won't trip both.
   const telanCandidate =
-    blood != null && blood > THRESHOLDS.bloodHotTelan ||
+    (blood != null &&
+     blood > THRESHOLDS.bloodHotTelan &&
+     (bloodCovHits == null || bloodCovHits > THRESHOLDS.bloodCoverageTelan)) ||
     (deepRed != null && red != null && deepRed > THRESHOLDS.deepRedHemo &&
      red > THRESHOLDS.redmapHotTelan);
 
@@ -445,22 +491,22 @@ export function verdictFromSignals(
 
   if (hemoCandidate && melaninCandidate && !ratioOK(deepRed, brown)) {
     substrate = "mixed";
-    rationale = `deepRedMap (${deepRed!.toFixed(2)}) and brownMap (${brown!.toFixed(2)}) both warm — substrate is mixed.`;
+    rationale = `deepRedMap Δ${deepRed!.toFixed(2)} and brownMap Δ${brown!.toFixed(2)} both elevated vs reference — substrate is mixed.`;
     evidence = 2;
   } else if (hemoCandidate) {
     substrate = "hemosiderin";
     evidence += 1; // primary margin
-    if (deepRed! - THRESHOLDS.deepRedHemo >= 0.1) evidence += 1;
-    if (brown! < deepRed! - THRESHOLDS.brownColdRelative - 0.05) evidence += 1;
+    if (deepRed! - THRESHOLDS.deepRedHemo >= 0.08) evidence += 1;
+    if (brown! < deepRed! - THRESHOLDS.brownColdRelative - 0.04) evidence += 1;
     if ((zone === "periorbitalL" || zone === "periorbitalR") && undereye != null && undereye > 0.3)
       evidence += 1;
-    rationale = `deepRedMap ${deepRed!.toFixed(2)} > brownMap ${brown!.toFixed(2)} + bloodmap cold (${blood!.toFixed(2)}) → iron-pigment dominant.`;
+    rationale = `deepRedMap Δ${deepRed!.toFixed(2)} > brownMap Δ${brown!.toFixed(2)} + bloodmap Δ${blood!.toFixed(2)} cold → iron-pigment dominant.`;
   } else if (telanCandidate) {
     substrate = "telangiectasia";
     evidence += 1;
-    if (blood != null && blood > THRESHOLDS.bloodHotTelan + 0.1) evidence += 1;
+    if (blood != null && blood > THRESHOLDS.bloodHotTelan + 0.06) evidence += 1;
     if (red != null && red > THRESHOLDS.redmapHotTelan) evidence += 1;
-    rationale = `bloodmap ${blood?.toFixed(2) ?? "—"} / redmap ${red?.toFixed(2) ?? "—"} — active surface vascular signal.`;
+    rationale = `bloodmap Δ${blood?.toFixed(2) ?? "—"} hot · ${bloodCovHits != null ? (bloodCovHits * 100).toFixed(0) + "% of zone lit" : ""} — active surface vascular signal.`;
   } else if (melaninCandidate) {
     // Sub-class melanin
     if (brownSpotCov != null && brownSpotCov > THRESHOLDS.brownSpotCoverageLentigo &&
@@ -475,18 +521,18 @@ export function verdictFromSignals(
     } else {
       substrate = "melanin_melasma";
       evidence += 1;
-      rationale = `Diffuse brownMap (${brown!.toFixed(2)}) above reference baseline.`;
-      if (deepBrown != null && deepBrown > 0.4) evidence += 1;
+      rationale = `Diffuse brownMap Δ${brown!.toFixed(2)} above reference baseline.`;
+      if (deepBrown != null && deepBrown > 0.08) evidence += 1;
     }
     // Bonus evidence: brownMap clearly above reference
-    if (refs.brownBaseline != null && brown != null && (brown - refs.brownBaseline) > 0.2)
+    if (brown != null && brown > THRESHOLDS.brownDeltaMelanin + 0.08)
       evidence += 1;
   } else if (
-    (deepRed ?? 0) < 0.25 && (brown ?? 0) < 0.25 && (blood ?? 0) < 0.2
+    (deepRed ?? 0) < 0.05 && (brown ?? 0) < 0.05 && (blood ?? 0) < 0.05
   ) {
     substrate = "clear";
     evidence = 3;
-    rationale = "All primary channels cold — no substrate finding.";
+    rationale = "All primary channels at/below reference — no substrate finding.";
   } else {
     substrate = "unclear";
     evidence = 1;
@@ -600,13 +646,23 @@ export function buildReferences(
   skinType?: number,
   patientContext?: import("@/lib/context").PatientContext,
 ): References {
-  const fb = forehead?.filter((s): s is ZoneSample => "mean" in s) ?? [];
-  const nb = nose?.filter((s): s is ZoneSample => "mean" in s) ?? [];
-  const brownBaseline = fb.find((s) => s.channel === "brownMap")?.mean;
-  const deepRedBaseline = nb.find((s) => s.channel === "deepRedMap")?.mean;
+  const fb = forehead?.filter((s): s is ZoneSample => "chroma" in s) ?? [];
+  const nb = nose?.filter((s): s is ZoneSample => "chroma" in s) ?? [];
+  // Baselines are in CHROMA units, not RGB mean — that's what every rule
+  // in substrate.ts now compares against.
+  const brownBaseline = fb.find((s) => s.channel === "brownMap")?.chroma;
+  const deepRedBaseline = nb.find((s) => s.channel === "deepRedMap")?.chroma;
+  const bloodBaseline = nb.find((s) => s.channel === "bloodMap")?.chroma;
   const referenceDirty =
     brownBaseline != null && brownBaseline > THRESHOLDS.referenceDirtyBrown;
-  return { brownBaseline, deepRedBaseline, referenceDirty, skinType, patientContext };
+  return {
+    brownBaseline,
+    deepRedBaseline,
+    bloodBaseline,
+    referenceDirty,
+    skinType,
+    patientContext,
+  };
 }
 
 export const SUBSTRATE_LABEL: Record<Substrate, string> = {
