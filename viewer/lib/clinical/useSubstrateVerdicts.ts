@@ -2,6 +2,7 @@
 
 import { useEffect, useReducer, useRef } from "react";
 import type { DiagnosisSkin } from "@/lib/types";
+import type { PatientContext } from "@/lib/context";
 import { stringField } from "@/lib/util";
 import { sampleCache } from "./sampleCache";
 import { sampleZone } from "./sampler";
@@ -92,6 +93,7 @@ export function useSubstrateVerdicts(
   direction: Direction,
   skinType?: number,
   resolvedPolygons?: ZonePolygonMap,
+  patientContext?: PatientContext,
 ): UseSubstrateVerdicts {
   const [state, dispatch] = useReducer(reducer, { loading: false, verdicts: {}, findings: [] });
   const runIdRef = useRef(0);
@@ -153,7 +155,7 @@ export function useSubstrateVerdicts(
           : undefined;
         if (runId !== runIdRef.current) return;
 
-        const refs = buildReferences(foreheadSamples, noseSamples, skinType);
+        const refs = buildReferences(foreheadSamples, noseSamples, skinType, patientContext);
         dispatch({ type: "refs", refs });
 
         // Emit the reference zone verdicts now.
@@ -201,7 +203,7 @@ export function useSubstrateVerdicts(
       ac.abort();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [face, direction, skinType, resolvedPolygons]);
+  }, [face, direction, skinType, resolvedPolygons, patientContext]);
 
   return state;
 }

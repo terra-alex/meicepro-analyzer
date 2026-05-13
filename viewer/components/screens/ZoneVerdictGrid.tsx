@@ -116,12 +116,129 @@ export function ZoneVerdictGrid({
         </div>
       )}
 
+      {direction === 0 && findings.length > 0 && (
+        <AsymmetryPanel findings={findings} />
+      )}
+
       <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(3, 1fr)" }}>
         {list.map((v) => (
           <ZoneCard key={v.zone} v={v} />
         ))}
       </div>
     </section>
+  );
+}
+
+// ── Asymmetry panel ──────────────────────────────────────────────────────────
+
+const ASYMMETRY_LEVEL_TONE: Record<AsymmetryLevel, { fg: string; bg: string }> = {
+  none: { fg: t.faint, bg: t.surfaceAlt },
+  mild: { fg: t.amber, bg: t.amberSoft },
+  notable: { fg: t.clay, bg: t.claySoft },
+  marked: { fg: t.rose, bg: t.roseSoft },
+};
+
+const CHANNEL_LABEL: Record<string, string> = {
+  deepRedMap: "Deep-red",
+  brownMap: "Brown",
+  bloodMap: "Blood-flow",
+  redMap: "Red",
+  deepBrownMap: "Deep-brown",
+  undereyeMask: "Under-eye",
+  brownSpotMask: "Brown-spot",
+  sensitiveAreaMask: "Sensitive",
+};
+
+function AsymmetryPanel({ findings }: { findings: AsymmetryFinding[] }) {
+  return (
+    <div
+      style={{
+        background: t.surface,
+        border: `1px solid ${t.hairline}`,
+        borderRadius: 6,
+        padding: "14px 16px",
+        marginBottom: 16,
+      }}
+    >
+      <div className="flex items-baseline justify-between mb-3">
+        <span
+          className="uppercase font-medium"
+          style={{ fontSize: 10.5, letterSpacing: "0.12em", color: t.muted }}
+        >
+          Hemiface L/R asymmetry · front capture
+        </span>
+        <span
+          className="font-mono-fine uppercase"
+          style={{ fontSize: 9.5, letterSpacing: "0.08em", color: t.muted, background: t.surfaceAlt, borderRadius: 3, padding: "2px 6px" }}
+        >
+          Informational · does not alter verdicts
+        </span>
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+        {findings.map((f, i) => {
+          const tone = ASYMMETRY_LEVEL_TONE[f.level];
+          const leftZone = ZONE_LABEL[f.zonePair[0] as ZoneKey];
+          const rightZone = ZONE_LABEL[f.zonePair[1] as ZoneKey];
+          return (
+            <div
+              key={i}
+              style={{
+                display: "flex",
+                alignItems: "baseline",
+                gap: 10,
+                padding: "7px 10px",
+                background: t.surfaceAlt,
+                borderRadius: 4,
+                flexWrap: "wrap",
+              }}
+            >
+              {/* Channel */}
+              <span
+                className="font-mono-fine"
+                style={{ fontSize: 10.5, color: t.muted, minWidth: 72, flexShrink: 0 }}
+              >
+                {CHANNEL_LABEL[f.channel] ?? f.channel}
+              </span>
+              {/* Zone pair */}
+              <span style={{ fontSize: 10.5, color: t.faint, flexShrink: 0 }}>
+                {leftZone} / {rightZone}
+              </span>
+              {/* Ratio */}
+              <span
+                className="font-mono-fine"
+                style={{ fontSize: 11, color: t.ink2, fontWeight: 600, flexShrink: 0 }}
+              >
+                {f.ratio.toFixed(1)}×
+              </span>
+              {/* Dominant side */}
+              <span style={{ fontSize: 10.5, color: t.muted, flexShrink: 0 }}>
+                {f.dominantSide === "left" ? "L dominant" : "R dominant"}
+              </span>
+              {/* Level pill */}
+              <span
+                className="font-mono-fine uppercase"
+                style={{
+                  padding: "2px 7px",
+                  borderRadius: 3,
+                  background: tone.bg,
+                  color: tone.fg,
+                  fontSize: 9.5,
+                  letterSpacing: "0.08em",
+                  fontWeight: 600,
+                  flexShrink: 0,
+                }}
+              >
+                {f.level}
+              </span>
+              {/* Interpretation */}
+              <span style={{ fontSize: 11, color: t.ink2, lineHeight: 1.4, flex: "1 1 240px" }}>
+                {f.interpretation}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 
