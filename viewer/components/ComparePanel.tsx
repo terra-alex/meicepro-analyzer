@@ -26,8 +26,8 @@ function fmtScore(v: number | null | undefined): string {
 }
 
 function deltaBadge(d: number, smaller: number = 3) {
-  if (Math.abs(d) < smaller) return { txt: `±${Math.abs(Math.round(d))}`, cls: "text-white/40" };
-  return { txt: `${d > 0 ? "+" : ""}${Math.round(d)}`, cls: d > 0 ? "text-emerald-300" : "text-rose-300" };
+  if (Math.abs(d) < smaller) return { txt: `±${Math.abs(Math.round(d))}`, cls: "text-[var(--faint)]" };
+  return { txt: `${d > 0 ? "+" : ""}${Math.round(d)}`, cls: d > 0 ? "text-[var(--sage)]" : "text-[var(--rose)]" };
 }
 
 export default function ComparePanel({ a, b, loading, error, direction, onLoad, onSwap, onClear }: Props) {
@@ -92,58 +92,58 @@ export default function ComparePanel({ a, b, loading, error, direction, onLoad, 
         className="w-full px-4 py-3 flex items-center justify-between text-left"
         onClick={() => setOpen((v) => !v)}
       >
-        <h3 className="text-sm font-medium text-white/80">
+        <h3 className="text-sm font-medium text-[var(--ink)]">
           Compare to another report{b ? " · loaded" : ""}
         </h3>
-        <span className="text-xs text-white/40">{open ? "hide" : "show"}</span>
+        <span className="text-xs text-[var(--faint)]">{open ? "hide" : "show"}</span>
       </button>
       {open && (
         <div className="px-4 pb-4 space-y-3">
           <form onSubmit={onSubmit} className="flex flex-wrap items-end gap-2 text-xs">
             <div className="flex-1 min-w-[220px]">
-              <label className="block text-[10px] uppercase tracking-wider text-white/40 mb-0.5">B · diagnosis ID</label>
+              <label className="block text-[10px] uppercase tracking-wider text-[var(--faint)] mb-0.5">B · diagnosis ID</label>
               <input
                 name="id"
                 placeholder="UUID for the report you want to compare against"
-                className="bg-black/30 border border-white/10 rounded px-2 py-1.5 font-mono w-full"
+                className="bg-[var(--ink)]/20 border border-[var(--hairline)] rounded px-2 py-1.5 font-mono w-full"
               />
             </div>
             <div>
-              <label className="block text-[10px] uppercase tracking-wider text-white/40 mb-0.5">Lang</label>
-              <select name="lang" defaultValue="en" className="bg-black/30 border border-white/10 rounded px-2 py-1.5">
+              <label className="block text-[10px] uppercase tracking-wider text-[var(--faint)] mb-0.5">Lang</label>
+              <select name="lang" defaultValue="en" className="bg-[var(--ink)]/20 border border-[var(--hairline)] rounded px-2 py-1.5">
                 {["en", "zh", "es", "fr", "de", "it", "pt", "ja", "ru", "ar", "tr", "pl", "nl", "sk", "el", "he", "hu", "id", "lt", "th", "uk", "vi"].map((l) => (
                   <option key={l}>{l}</option>
                 ))}
               </select>
             </div>
-            <button type="submit" disabled={loading} className="px-3 py-1.5 rounded bg-amber-500/25 border border-amber-400/40 text-amber-100 hover:bg-amber-500/35 disabled:opacity-50">
+            <button type="submit" disabled={loading} className="px-3 py-1.5 rounded bg-[var(--amber-soft)] border border-[var(--amber)] text-[var(--amber)] hover:bg-[var(--amber-soft)] disabled:opacity-50">
               {loading ? "Loading…" : "Load B"}
             </button>
             {b && (
               <>
-                <button type="button" onClick={onSwap} className="px-3 py-1.5 rounded border border-white/10 hover:bg-white/5 text-white/70">Swap A↔B</button>
-                <button type="button" onClick={onClear} className="px-3 py-1.5 rounded border border-rose-500/30 hover:bg-rose-500/10 text-rose-200">Clear B</button>
+                <button type="button" onClick={onSwap} className="px-3 py-1.5 rounded border border-[var(--hairline)] hover:bg-[var(--surface-alt)] text-[var(--ink-2)]">Swap A↔B</button>
+                <button type="button" onClick={onClear} className="px-3 py-1.5 rounded border border-[var(--rose)] hover:bg-[var(--rose-soft)] text-[var(--rose)]">Clear B</button>
               </>
             )}
           </form>
 
-          {error && <div className="text-xs text-rose-300">{error}</div>}
+          {error && <div className="text-xs text-[var(--rose)]">{error}</div>}
 
           {b && bFace && aFace && (
             <>
               {/* Captures summary */}
               <div className="grid grid-cols-2 gap-3 text-xs">
                 <div className="panel-2 px-3 py-2">
-                  <div className="text-[10px] uppercase text-cyan-300/80">A</div>
+                  <div className="text-[10px] uppercase text-[var(--teal)]/80">A</div>
                   <div className="font-medium">{a.datas.customer.cusName}</div>
-                  <div className="text-white/50">{openDate}</div>
-                  <div className="text-white/40 text-[10px] mt-0.5 font-mono">{a.datas.diagnosis.id}</div>
+                  <div className="text-[var(--muted)]">{openDate}</div>
+                  <div className="text-[var(--faint)] text-[10px] mt-0.5 font-mono">{a.datas.diagnosis.id}</div>
                 </div>
                 <div className="panel-2 px-3 py-2">
-                  <div className="text-[10px] uppercase text-amber-300/80">B</div>
+                  <div className="text-[10px] uppercase text-[var(--amber)]/80">B</div>
                   <div className="font-medium">{b.datas.customer.cusName}</div>
-                  <div className="text-white/50">{compareDate}</div>
-                  <div className="text-white/40 text-[10px] mt-0.5 font-mono">{b.datas.diagnosis.id}</div>
+                  <div className="text-[var(--muted)]">{compareDate}</div>
+                  <div className="text-[var(--faint)] text-[10px] mt-0.5 font-mono">{b.datas.diagnosis.id}</div>
                 </div>
               </div>
 
@@ -155,7 +155,7 @@ export default function ComparePanel({ a, b, loading, error, direction, onLoad, 
 
               {/* Score deltas */}
               <div className="panel-2 p-3">
-                <div className="text-[10px] uppercase tracking-wider text-white/50 mb-2">
+                <div className="text-[10px] uppercase tracking-wider text-[var(--muted)] mb-2">
                   Score deltas (B − A) · current direction · positive = improvement
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1 text-xs">
@@ -171,9 +171,9 @@ export default function ComparePanel({ a, b, loading, error, direction, onLoad, 
                     const sevB = b100 == null ? null : severityFromScore(vb!);
                     return (
                       <div key={r.key} className="grid grid-cols-[1fr_40px_40px_50px] gap-2 items-center">
-                        <span className="text-white/70 truncate" title={r.key}>{r.label}</span>
-                        <span className={`text-right font-mono ${sevA ? SEVERITY_COLOR[sevA].fg : "text-white/30"}`}>{fmtScore(va)}</span>
-                        <span className={`text-right font-mono ${sevB ? SEVERITY_COLOR[sevB].fg : "text-white/30"}`}>{fmtScore(vb)}</span>
+                        <span className="text-[var(--ink-2)] truncate" title={r.key}>{r.label}</span>
+                        <span className={`text-right font-mono ${sevA ? SEVERITY_COLOR[sevA].fg : "text-[var(--faint)]"}`}>{fmtScore(va)}</span>
+                        <span className={`text-right font-mono ${sevB ? SEVERITY_COLOR[sevB].fg : "text-[var(--faint)]"}`}>{fmtScore(vb)}</span>
                         <span className={`text-right font-mono text-[11px] ${badge.cls}`}>{badge.txt}</span>
                       </div>
                     );
@@ -183,12 +183,12 @@ export default function ComparePanel({ a, b, loading, error, direction, onLoad, 
 
               {/* Symptom-count deltas */}
               <div className="panel-2 p-3">
-                <div className="text-[10px] uppercase tracking-wider text-white/50 mb-2">
+                <div className="text-[10px] uppercase tracking-wider text-[var(--muted)] mb-2">
                   Symptom counts · current direction · ΔB = total counts B − A
                 </div>
                 <table className="w-full text-xs">
                   <thead>
-                    <tr className="text-[10px] text-white/40 uppercase">
+                    <tr className="text-[10px] text-[var(--faint)] uppercase">
                       <th className="text-left font-normal py-1 pr-2">Symptom</th>
                       <th className="text-right font-normal py-1 px-2">A</th>
                       <th className="text-right font-normal py-1 px-2">B</th>
@@ -199,13 +199,13 @@ export default function ComparePanel({ a, b, loading, error, direction, onLoad, 
                     {symptomCounts.map((s) => {
                       const d = s.b - s.a;
                       const badge = d === 0
-                        ? { txt: "±0", cls: "text-white/40" }
+                        ? { txt: "±0", cls: "text-[var(--faint)]" }
                         : d < 0
-                          ? { txt: `${d}`, cls: "text-emerald-300" } // fewer is better
-                          : { txt: `+${d}`, cls: "text-rose-300" };
+                          ? { txt: `${d}`, cls: "text-[var(--sage)]" } // fewer is better
+                          : { txt: `+${d}`, cls: "text-[var(--rose)]" };
                       return (
                         <tr key={s.code} className="border-t border-white/5">
-                          <td className="py-0.5 pr-2 text-white/80">
+                          <td className="py-0.5 pr-2 text-[var(--ink)]">
                             <span className="kbd mr-2">{s.code}</span>
                             {SYMPTOM_LABEL[s.code] ?? "Unknown"}
                           </td>
@@ -227,14 +227,14 @@ export default function ComparePanel({ a, b, loading, error, direction, onLoad, 
 }
 
 function ImagePanel({ face, label, tone }: { face: DiagnosisSkin; label: string; tone: "cyan" | "amber" }) {
-  const tint = tone === "cyan" ? "bg-cyan-500/40 text-cyan-100" : "bg-amber-500/40 text-amber-100";
+  const tint = tone === "cyan" ? "bg-[var(--teal-soft)] text-[var(--teal)]" : "bg-[var(--amber-soft)] text-[var(--amber)]";
   return (
     <div className="panel-2 relative aspect-[9/16] overflow-hidden">
       {face.imgDaylight ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img src={face.imgDaylight} alt={label} className="absolute inset-0 w-full h-full object-contain" />
       ) : (
-        <div className="absolute inset-0 flex items-center justify-center text-xs text-white/40">No daylight image</div>
+        <div className="absolute inset-0 flex items-center justify-center text-xs text-[var(--faint)]">No daylight image</div>
       )}
       <span className={`absolute left-2 top-2 text-[10px] px-1.5 py-0.5 rounded ${tint}`}>{label}</span>
     </div>

@@ -56,11 +56,14 @@ export default function ImageStack({ face, initialBase, initialOverlays, onChang
   const [pan, setPan] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [imgDim, setImgDim] = useState<{ w: number; h: number } | null>(null);
 
-  // Reset zoom/pan when the base image changes.
+  const [baseError, setBaseError] = useState(false);
+
+  // Reset zoom/pan + error state when the base image changes.
   useEffect(() => {
     setZoom(1);
     setPan({ x: 0, y: 0 });
     setImgDim(null);
+    setBaseError(false);
   }, [baseUrl]);
 
   // Drag-to-pan
@@ -159,17 +162,47 @@ export default function ImageStack({ face, initialBase, initialOverlays, onChang
               cursor: zoom > 1 ? (drag.current.active ? "grabbing" : "grab") : "default",
             }}
           >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={baseUrl}
-              alt="base"
-              draggable={false}
-              onLoad={(e) => {
-                const img = e.currentTarget;
-                setImgDim({ w: img.naturalWidth, h: img.naturalHeight });
-              }}
-              className="absolute inset-0 w-full h-full object-contain layer-blend-normal pointer-events-none"
-            />
+            {!baseError ? (
+              /* eslint-disable-next-line @next/next/no-img-element */
+              <img
+                src={baseUrl}
+                alt="base"
+                draggable={false}
+                onLoad={(e) => {
+                  const img = e.currentTarget;
+                  setImgDim({ w: img.naturalWidth, h: img.naturalHeight });
+                }}
+                onError={() => setBaseError(true)}
+                className="absolute inset-0 w-full h-full object-contain layer-blend-normal pointer-events-none"
+              />
+            ) : (
+              <div
+                className="absolute inset-0 flex flex-col items-center justify-center gap-2"
+                style={{
+                  background:
+                    "linear-gradient(150deg, #E6D8C2 0%, #C8A981 60%, #8E6E48 100%)",
+                  color: "rgba(255,255,255,0.9)",
+                }}
+              >
+                <div
+                  className="font-mono-fine uppercase"
+                  style={{
+                    fontSize: 10,
+                    letterSpacing: "0.12em",
+                    padding: "4px 10px",
+                    background: "rgba(0,0,0,0.35)",
+                    borderRadius: 3,
+                  }}
+                >
+                  sample · image not available
+                </div>
+                <div style={{ fontSize: 12, opacity: 0.85, maxWidth: 320, textAlign: "center", padding: "0 16px" }}>
+                  This is the sanitised demo report — the OSS URLs point at
+                  <span className="font-mono-fine"> example.invalid</span>. Load a real
+                  diagnosis ID to see actual scan imagery.
+                </div>
+              </div>
+            )}
             {activeOverlays.map(({ spec, url }) => {
               const st = overlayState[spec.field as string]!;
               return (
@@ -186,19 +219,19 @@ export default function ImageStack({ face, initialBase, initialOverlays, onChang
             })}
           </div>
         ) : (
-          <div className="absolute inset-0 flex items-center justify-center text-sm text-white/50">No image for this direction</div>
+          <div className="absolute inset-0 flex items-center justify-center text-sm text-[var(--muted)]">No image for this direction</div>
         )}
 
         {/* Zoom controls */}
-        <div className="absolute right-3 top-3 flex flex-col gap-1 bg-black/40 rounded-md p-1">
-          <button onClick={() => bumpZoom(1.3)} className="px-2 text-sm hover:bg-white/10 rounded">＋</button>
-          <button onClick={reset} className="px-2 text-[10px] hover:bg-white/10 rounded font-mono">{zoom.toFixed(1)}×</button>
-          <button onClick={() => bumpZoom(1 / 1.3)} className="px-2 text-sm hover:bg-white/10 rounded">−</button>
+        <div className="absolute right-3 top-3 flex flex-col gap-1 bg-[var(--ink)]/30 rounded-md p-1">
+          <button onClick={() => bumpZoom(1.3)} className="px-2 text-sm hover:bg-[var(--hairline-2)] rounded">＋</button>
+          <button onClick={reset} className="px-2 text-[10px] hover:bg-[var(--hairline-2)] rounded font-mono">{zoom.toFixed(1)}×</button>
+          <button onClick={() => bumpZoom(1 / 1.3)} className="px-2 text-sm hover:bg-[var(--hairline-2)] rounded">−</button>
         </div>
 
         {/* Pan hint */}
         {zoom > 1 && (
-          <div className="absolute left-3 top-3 text-[10px] text-white/40 bg-black/40 px-1.5 py-0.5 rounded">
+          <div className="absolute left-3 top-3 text-[10px] text-[var(--faint)] bg-[var(--ink)]/30 px-1.5 py-0.5 rounded">
             drag to pan · scroll to zoom
           </div>
         )}
@@ -207,7 +240,7 @@ export default function ImageStack({ face, initialBase, initialOverlays, onChang
         {activeOverlays.length > 0 && (
           <div className="absolute left-3 bottom-3 flex flex-wrap gap-1 max-w-[60%]">
             {activeOverlays.map(({ spec }) => (
-              <span key={spec.field as string} className="text-[10px] px-2 py-0.5 rounded bg-cyan-500/20 border border-cyan-400/40 text-cyan-100">
+              <span key={spec.field as string} className="text-[10px] px-2 py-0.5 rounded bg-[var(--teal-soft)] border border-[var(--teal)] text-[var(--teal)]">
                 {spec.label}
               </span>
             ))}
@@ -218,11 +251,11 @@ export default function ImageStack({ face, initialBase, initialOverlays, onChang
       {/* Layer controls */}
       <div className="panel-2 p-3 overflow-y-auto max-h-[680px]">
         {extraPanel}
-        <div className="text-[10px] uppercase tracking-wider text-white/50 mb-1">Base photo</div>
+        <div className="text-[10px] uppercase tracking-wider text-[var(--muted)] mb-1">Base photo</div>
         <select
           value={baseField}
           onChange={(e) => setBaseField(e.target.value)}
-          className="w-full bg-black/30 border border-white/10 rounded px-2 py-1.5 text-sm mb-3"
+          className="w-full bg-[var(--ink)]/20 border border-[var(--hairline)] rounded px-2 py-1.5 text-sm mb-3"
         >
           {bases.map((b) => (
             <option key={b.spec.field as string} value={b.spec.field as string}>{b.spec.label}</option>
@@ -260,10 +293,10 @@ function Section({
   }, {});
   return (
     <div className="mb-3">
-      <div className="text-[10px] uppercase tracking-wider text-white/50 mb-1">{title}</div>
+      <div className="text-[10px] uppercase tracking-wider text-[var(--muted)] mb-1">{title}</div>
       {Object.entries(groups).map(([g, list]) => (
         <div key={g} className="mb-2">
-          <div className="text-[10px] text-white/40 mb-0.5">{g}</div>
+          <div className="text-[10px] text-[var(--faint)] mb-0.5">{g}</div>
           {list.map(({ spec }) => {
             const st = state[spec.field as string];
             const enabled = !!st?.enabled;
@@ -271,10 +304,10 @@ function Section({
               <div key={spec.field as string} className="mb-1.5">
                 <button
                   onClick={() => onToggle(spec.field as string, { blend: defaultBlend })}
-                  className={`w-full flex items-center gap-2 text-left text-xs px-2 py-1 rounded transition ${enabled ? "bg-cyan-500/20 text-cyan-100" : "hover:bg-white/5 text-white/70"}`}
+                  className={`w-full flex items-center gap-2 text-left text-xs px-2 py-1 rounded transition ${enabled ? "bg-[var(--teal-soft)] text-[var(--teal)]" : "hover:bg-[var(--surface-alt)] text-[var(--ink-2)]"}`}
                   title={spec.hint ?? spec.label}
                 >
-                  <span className={`w-2 h-2 rounded-sm ${enabled ? "bg-cyan-400" : "bg-white/20"}`} />
+                  <span className={`w-2 h-2 rounded-sm ${enabled ? "bg-[var(--teal)]" : "bg-[var(--hairline)]"}`} />
                   <span className="flex-1 truncate">{spec.label}</span>
                 </button>
                 {enabled && (
@@ -287,7 +320,7 @@ function Section({
                     <select
                       value={st.blend}
                       onChange={(e) => onBlend(spec.field as string, e.target.value as OverlayState["blend"])}
-                      className="bg-black/30 border border-white/10 rounded text-[10px] px-1 py-0.5"
+                      className="bg-[var(--ink)]/20 border border-[var(--hairline)] rounded text-[10px] px-1 py-0.5"
                     >
                       <option value="screen">screen</option>
                       <option value="multiply">multiply</option>

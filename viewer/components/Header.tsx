@@ -38,28 +38,28 @@ export default function Header({ customer, diagnosis, reportId, lang, source, on
         <div>
           <div className="flex items-baseline gap-3 flex-wrap">
             <h1 className="text-lg font-semibold tracking-tight">{customer.cusName}</h1>
-            <span className="text-xs text-white/50">
+            <span className="text-xs text-[var(--muted)]">
               {customer.gender === 1 ? "Male" : customer.gender === 0 ? "Female" : "—"}
               {realAge != null ? ` · ${realAge}` : ""}
             </span>
-            {customer.phone && <span className="text-xs text-white/40">{customer.phone}</span>}
-            {customer.email && <span className="text-xs text-white/40">{customer.email}</span>}
-            <span className={`text-[10px] px-1.5 py-0.5 rounded ${source === "live" ? "bg-emerald-500/25 text-emerald-200" : "bg-white/10 text-white/60"}`}>
+            {customer.phone && <span className="text-xs text-[var(--faint)]">{customer.phone}</span>}
+            {customer.email && <span className="text-xs text-[var(--faint)]">{customer.email}</span>}
+            <span className={`text-[10px] px-1.5 py-0.5 rounded ${source === "live" ? "bg-[var(--sage-soft)] text-[var(--sage)]" : "bg-[var(--hairline-2)] text-[var(--muted)]"}`}>
               {source === "live" ? "live" : "sample"}
             </span>
           </div>
-          <div className="text-xs text-white/50 mt-0.5 flex flex-wrap gap-3">
-            <span><span className="text-white/40">Captured</span> {diagnosis.createTime}</span>
-            <span><span className="text-white/40">Skin age</span> {diagnosis.skinAge}</span>
-            <span><span className="text-white/40">Composite score</span> {Math.round(diagnosis.skinScore * 100)}/100</span>
-            <span><span className="text-white/40">Algo</span> {diagnosis.algVersion}</span>
-            <span><span className="text-white/40">App</span> {diagnosis.appVersion}</span>
-            <span><span className="text-white/40">Device</span> {diagnosis.deviceNo}</span>
-            <span><span className="text-white/40">Shop</span> {customer.shopName}</span>
+          <div className="text-xs text-[var(--muted)] mt-0.5 flex flex-wrap gap-3">
+            <span><span className="text-[var(--faint)]">Captured</span> {diagnosis.createTime}</span>
+            <span><span className="text-[var(--faint)]">Skin age</span> {diagnosis.skinAge}</span>
+            <span><span className="text-[var(--faint)]">Composite score</span> {Math.round(diagnosis.skinScore * 100)}/100</span>
+            <span><span className="text-[var(--faint)]">Algo</span> {diagnosis.algVersion}</span>
+            <span><span className="text-[var(--faint)]">App</span> {diagnosis.appVersion}</span>
+            <span><span className="text-[var(--faint)]">Device</span> {diagnosis.deviceNo}</span>
+            <span><span className="text-[var(--faint)]">Shop</span> {customer.shopName}</span>
           </div>
           {customer.diagnosisCc && (
-            <div className="text-xs text-cyan-200/80 mt-1">
-              <span className="text-white/40">CC: </span>
+            <div className="text-xs text-[var(--teal)]/80 mt-1">
+              <span className="text-[var(--faint)]">CC: </span>
               {customer.diagnosisCc}
             </div>
           )}
@@ -67,18 +67,18 @@ export default function Header({ customer, diagnosis, reportId, lang, source, on
 
         <form onSubmit={onSubmit} className="flex flex-wrap items-end gap-2 text-xs">
           <div>
-            <label className="block text-[10px] uppercase tracking-wider text-white/40 mb-0.5">Diagnosis ID</label>
+            <label className="block text-[10px] uppercase tracking-wider text-[var(--faint)] mb-0.5">Diagnosis ID</label>
             <input
               key={reportId}
               name="id"
               defaultValue={reportId}
               placeholder="UUID"
-              className="bg-black/30 border border-white/10 rounded px-2 py-1.5 font-mono w-[290px]"
+              className="bg-[var(--ink)]/20 border border-[var(--hairline)] rounded px-2 py-1.5 font-mono w-[290px]"
             />
           </div>
           <div>
-            <label className="block text-[10px] uppercase tracking-wider text-white/40 mb-0.5">Lang</label>
-            <select name="lang" defaultValue={lang} className="bg-black/30 border border-white/10 rounded px-2 py-1.5">
+            <label className="block text-[10px] uppercase tracking-wider text-[var(--faint)] mb-0.5">Lang</label>
+            <select name="lang" defaultValue={lang} className="bg-[var(--ink)]/20 border border-[var(--hairline)] rounded px-2 py-1.5">
               {["en", "zh", "es", "fr", "de", "it", "pt", "ja", "ru", "ar", "tr", "pl", "nl", "sk", "el", "he", "hu", "id", "lt", "th", "uk", "vi"].map((l) => (
                 <option key={l}>{l}</option>
               ))}
@@ -87,11 +87,11 @@ export default function Header({ customer, diagnosis, reportId, lang, source, on
           <button
             type="submit"
             disabled={loading}
-            className="px-3 py-1.5 rounded bg-cyan-500/20 border border-cyan-400/40 text-cyan-100 hover:bg-cyan-500/30 disabled:opacity-50"
+            className="px-3 py-1.5 rounded bg-[var(--teal-soft)] border border-[var(--teal)] text-[var(--teal)] hover:bg-[var(--teal-soft)] disabled:opacity-50"
           >
             {loading ? "Loading…" : "Load live"}
           </button>
-          <button type="button" onClick={onLoadSample} className="px-3 py-1.5 rounded border border-white/10 hover:bg-white/5 text-white/70">
+          <button type="button" onClick={onLoadSample} className="px-3 py-1.5 rounded border border-[var(--hairline)] hover:bg-[var(--surface-alt)] text-[var(--ink-2)]">
             Reset sample
           </button>
         </form>

@@ -56,12 +56,12 @@ function Metric({ label, full, value, tone }: { label: string; full?: string; va
   return (
     <div className={`panel-2 px-3 py-2 ring-1 ${c.ring}`} title={full}>
       <div className="flex justify-between items-baseline">
-        <span className="text-[11px] text-white/60">{label}</span>
+        <span className="text-[11px] text-[var(--muted)]">{label}</span>
         <span className={`text-[10px] ${c.fg}`}>{SEVERITY_LABEL[tone]}</span>
       </div>
       <div className="flex items-baseline gap-1 mt-0.5">
         <span className="text-2xl font-mono">{value}</span>
-        <span className="text-xs text-white/40">/100</span>
+        <span className="text-xs text-[var(--faint)]">/100</span>
       </div>
     </div>
   );
@@ -86,14 +86,14 @@ function BigMetric({
   return (
     <div className={`panel-2 px-3 py-2 ring-1 ${c.ring}`} data-accent={accent}>
       <div className="flex justify-between items-baseline">
-        <span className="text-[11px] text-white/60">{label}</span>
+        <span className="text-[11px] text-[var(--muted)]">{label}</span>
         <span className={`text-[10px] ${c.fg}`}>{SEVERITY_LABEL[tone]}</span>
       </div>
       <div className="flex items-baseline gap-1 mt-0.5">
         <span className="text-2xl font-mono">{value}</span>
-        {suffix ? <span className="text-xs text-white/40">{suffix}</span> : null}
+        {suffix ? <span className="text-xs text-[var(--faint)]">{suffix}</span> : null}
       </div>
-      {sub ? <div className="text-[10px] text-white/40 mt-0.5">{sub}</div> : null}
+      {sub ? <div className="text-[10px] text-[var(--faint)] mt-0.5">{sub}</div> : null}
     </div>
   );
 }

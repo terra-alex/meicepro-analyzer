@@ -28,18 +28,18 @@ export default function WrinkleFaceMap({ face }: Props) {
 
   return (
     <div className="panel p-4">
-      <h3 className="text-sm font-medium text-white/80 mb-2">Aging map (front face)</h3>
+      <h3 className="text-sm font-medium text-[var(--ink)] mb-2">Aging map (front face)</h3>
       <div className="flex gap-3">
         <svg viewBox="0 0 200 200" className="w-44 h-auto flex-shrink-0">
           {/* face silhouette */}
-          <ellipse cx="100" cy="105" rx="60" ry="78" fill="rgba(148,196,217,0.06)" stroke="rgba(148,196,217,0.25)" />
+          <ellipse cx="100" cy="105" rx="60" ry="78" fill="var(--surface-alt)" stroke="var(--hairline)" />
           {/* Eyes */}
-          <ellipse cx="76" cy="86" rx="8" ry="3" fill="rgba(148,196,217,0.3)" />
-          <ellipse cx="124" cy="86" rx="8" ry="3" fill="rgba(148,196,217,0.3)" />
+          <ellipse cx="76" cy="86" rx="8" ry="3" fill="var(--muted)" />
+          <ellipse cx="124" cy="86" rx="8" ry="3" fill="var(--muted)" />
           {/* Nose */}
-          <path d="M100 92 L97 118 L103 118 Z" fill="none" stroke="rgba(148,196,217,0.25)" />
+          <path d="M100 92 L97 118 L103 118 Z" fill="none" stroke="var(--hairline)" />
           {/* Mouth */}
-          <path d="M86 152 Q100 158 114 152" fill="none" stroke="rgba(148,196,217,0.4)" strokeWidth="1.5" />
+          <path d="M86 152 Q100 158 114 152" fill="none" stroke="var(--ink-2)" strokeWidth="1.5" />
 
           {WRINKLE_REGIONS.map((r) => {
             const idx = nullableNumField(face, `wrinkle${r.key}AgingIndex`);
@@ -78,9 +78,9 @@ export default function WrinkleFaceMap({ face }: Props) {
         {/* legend / table */}
         <div className="flex-1 text-[11px]">
           <div className="grid grid-cols-[1fr_auto_auto] gap-x-2 gap-y-1">
-            <div className="text-white/40">Region</div>
-            <div className="text-white/40 text-right">Idx</div>
-            <div className="text-white/40 text-right">Score</div>
+            <div className="text-[var(--faint)]">Region</div>
+            <div className="text-[var(--faint)] text-right">Idx</div>
+            <div className="text-[var(--faint)] text-right">Score</div>
             {WRINKLE_REGIONS.map((r) => {
               const idx = nullableNumField(face, `wrinkle${r.key}AgingIndex`);
               const score = nullableNumField(face, `wrinkle${r.key}Score`);
@@ -93,13 +93,13 @@ export default function WrinkleFaceMap({ face }: Props) {
               return (
                 <div
                   key={r.key}
-                  className={`contents ${isHover ? "[&>*]:bg-white/5" : ""}`}
+                  className={`contents ${isHover ? "[&>*]:bg-[var(--surface-alt)]" : ""}`}
                   onMouseEnter={() => setHover(r.key)}
                   onMouseLeave={() => setHover(null)}
                 >
-                  <div className={`truncate ${notApplicable ? "text-white/30" : ""}`} title={`weight ${weight ?? "—"}`}>{r.label}</div>
-                  <div className={`text-right font-mono ${notApplicable ? "text-white/30" : c.fg}`}>{idx == null ? "—" : idx}</div>
-                  <div className="text-right font-mono text-white/60">{showScore && score != null ? Math.round(score * 100) : "—"}</div>
+                  <div className={`truncate ${notApplicable ? "text-[var(--faint)]" : ""}`} title={`weight ${weight ?? "—"}`}>{r.label}</div>
+                  <div className={`text-right font-mono ${notApplicable ? "text-[var(--faint)]" : c.fg}`}>{idx == null ? "—" : idx}</div>
+                  <div className="text-right font-mono text-[var(--muted)]">{showScore && score != null ? Math.round(score * 100) : "—"}</div>
                 </div>
               );
             })}

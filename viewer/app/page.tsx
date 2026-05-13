@@ -1,36 +1,58 @@
 "use client";
 
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import Header from "@/components/Header";
-import ImageStack from "@/components/ImageStack";
-import MetricStrip from "@/components/MetricStrip";
-import RadarChart from "@/components/RadarChart";
-import WrinkleFaceMap from "@/components/WrinkleFaceMap";
-import AsymmetryView from "@/components/AsymmetryView";
-import SeverityMatrix from "@/components/SeverityMatrix";
-import AdviceCards from "@/components/AdviceCards";
-import RawInspector from "@/components/RawInspector";
-import AgingMorph from "@/components/AgingMorph";
-import ComparePanel from "@/components/ComparePanel";
-import { DIRECTION_NAME } from "@/lib/constants";
+import {
+  DirSeg,
+  NavBar,
+  PillBtn,
+  ReportHeader,
+  StatusPill,
+  type Direction,
+  type ViewKey,
+} from "@/components/ds";
+import {
+  CompareScreen,
+  EmptyScreen,
+  PlanScreen,
+  ReportScreen,
+  RoiScreen,
+  SubstrateScreen,
+} from "@/components/screens";
 import type { ReportPayload } from "@/lib/types";
+import { numField } from "@/lib/util";
 
 type Source = "sample" | "live";
 const SAMPLE_ID = "00000000-0000-0000-0000-000000000000";
+
+const DIR_TO_NUM: Record<Direction, -1 | 0 | 1> = {
+  left: -1,
+  front: 0,
+  right: 1,
+};
+const NUM_TO_DIR: Record<-1 | 0 | 1, Direction> = {
+  [-1]: "left",
+  [0]: "front",
+  [1]: "right",
+};
 
 interface PersistedView {
   id?: string;
   lang?: string;
   dir?: -1 | 0 | 1;
   base?: string;
-  layers?: string;     // comma-separated overlay field names
-  cmp?: string;        // compare-to id
+  layers?: string;
+  cmp?: string;
   cmpLang?: string;
+  view?: ViewKey;
 }
 
 function readUrl(): PersistedView {
   if (typeof window === "undefined") return {};
   const sp = new URLSearchParams(window.location.search);
+  const v = sp.get("view");
+  const view = v && ["report", "substrate", "compare", "roi", "plan"].includes(v)
+    ? (v as ViewKey)
+    : undefined;
   return {
     id: sp.get("id") ?? undefined,
     lang: sp.get("lang") ?? undefined,
@@ -39,8 +61,10 @@ function readUrl(): PersistedView {
     layers: sp.get("layers") ?? undefined,
     cmp: sp.get("cmp") ?? undefined,
     cmpLang: sp.get("cmpLang") ?? undefined,
+    view,
   };
 }
+
 function writeUrl(p: PersistedView) {
   if (typeof window === "undefined") return;
   const sp = new URLSearchParams();
@@ -57,11 +81,12 @@ function writeUrl(p: PersistedView) {
 function PageInner() {
   const [report, setReport] = useState<ReportPayload | null>(null);
   const [source, setSource] = useState<Source>("sample");
-  const [reportId, setReportId] = useState<string>(SAMPLE_ID);
+  const [reportId, setReportId] = useState<string>("");
   const [lang, setLang] = useState<string>("en");
   const [direction, setDirection] = useState<-1 | 0 | 1>(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [view, setView] = useState<ViewKey>("report");
 
   // Comparison state
   const [reportB, setReportB] = useState<ReportPayload | null>(null);
@@ -70,11 +95,12 @@ function PageInner() {
   const [loadingB, setLoadingB] = useState(false);
   const [errorB, setErrorB] = useState<string | null>(null);
 
-  // ImageStack persistent settings (lifted so they survive direction switches and URL state)
+  // ImageStack persistent settings
   const [baseField, setBaseField] = useState<string | undefined>(undefined);
-  const [overlays, setOverlays] = useState<Record<string, { enabled: boolean; opacity: number; blend: "screen" | "multiply" | "normal" }>>({});
+  const [overlays, setOverlays] = useState<
+    Record<string, { enabled: boolean; opacity: number; blend: "screen" | "multiply" | "normal" }>
+  >({});
 
-  // First-mount: read URL.
   const initialRead = useRef(false);
   useEffect(() => {
     if (initialRead.current) return;
@@ -96,61 +122,38 @@ function PageInner() {
     }
     if (p.cmp) setReportBId(p.cmp);
     if (p.cmpLang) setReportBLang(p.cmpLang);
+    if (p.view) setView(p.view);
   }, []);
 
-  // Initial load: if URL has id, fetch live; otherwise sample.
-  useEffect(() => {
-    if (!initialRead.current) return;
-    const p = readUrl();
-    let cancel = false;
-    async function go() {
-      if (p.id && p.id !== SAMPLE_ID) {
-        await loadLive(p.id, p.lang ?? "en", { skipUrl: true });
-      } else {
-        try {
-          const r = await fetch("/sample-report.json");
-          const data: ReportPayload = await r.json();
-          if (cancel) return;
-          setReport(data);
-          setSource("sample");
-          setReportId(data.datas.diagnosis.id);
-        } catch (e) {
-          setError(`failed to load sample: ${(e as Error).message}`);
+  const loadLive = useCallback(
+    async (id: string, language: string, opts: { skipUrl?: boolean } = {}) => {
+      setLoading(true);
+      setError(null);
+      try {
+        const r = await fetch(
+          `/api/report/${encodeURIComponent(id)}?lang=${encodeURIComponent(language)}`,
+        );
+        const data: ReportPayload = await r.json();
+        if (data.code !== 200) {
+          setError(`API ${data.code}: ${data.message ?? "unknown error"}`);
+          return;
         }
+        setReport(data);
+        setSource("live");
+        setReportId(id);
+        setLang(language);
+        if (!opts.skipUrl) {
+          const cur = readUrl();
+          writeUrl({ ...cur, id, lang: language });
+        }
+      } catch (e) {
+        setError(`fetch failed: ${(e as Error).message}`);
+      } finally {
+        setLoading(false);
       }
-      if (p.cmp) {
-        loadCompare(p.cmp, p.cmpLang ?? "en", { skipUrl: true });
-      }
-    }
-    go();
-    return () => { cancel = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const loadLive = useCallback(async (id: string, language: string, opts: { skipUrl?: boolean } = {}) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const r = await fetch(`/api/report/${encodeURIComponent(id)}?lang=${encodeURIComponent(language)}`);
-      const data: ReportPayload = await r.json();
-      if (data.code !== 200) {
-        setError(`API ${data.code}: ${data.message ?? "unknown error"}`);
-        return;
-      }
-      setReport(data);
-      setSource("live");
-      setReportId(id);
-      setLang(language);
-      if (!opts.skipUrl) {
-        const cur = readUrl();
-        writeUrl({ ...cur, id, lang: language });
-      }
-    } catch (e) {
-      setError(`fetch failed: ${(e as Error).message}`);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+    },
+    [],
+  );
 
   const loadSample = useCallback(() => {
     setLoading(true);
@@ -162,34 +165,42 @@ function PageInner() {
         setSource("sample");
         setReportId(data.datas.diagnosis.id);
         setLang("en");
-        writeUrl({});
+        const cur = readUrl();
+        // keep view if user navigated already
+        writeUrl({ view: cur.view });
       })
+      .catch((e) => setError(`failed to load sample: ${(e as Error).message}`))
       .finally(() => setLoading(false));
   }, []);
 
-  const loadCompare = useCallback(async (id: string, language: string, opts: { skipUrl?: boolean } = {}) => {
-    setLoadingB(true);
-    setErrorB(null);
-    try {
-      const r = await fetch(`/api/report/${encodeURIComponent(id)}?lang=${encodeURIComponent(language)}`);
-      const data: ReportPayload = await r.json();
-      if (data.code !== 200) {
-        setErrorB(`API ${data.code}: ${data.message ?? "unknown error"}`);
-        return;
+  const loadCompare = useCallback(
+    async (id: string, language: string, opts: { skipUrl?: boolean } = {}) => {
+      setLoadingB(true);
+      setErrorB(null);
+      try {
+        const r = await fetch(
+          `/api/report/${encodeURIComponent(id)}?lang=${encodeURIComponent(language)}`,
+        );
+        const data: ReportPayload = await r.json();
+        if (data.code !== 200) {
+          setErrorB(`API ${data.code}: ${data.message ?? "unknown error"}`);
+          return;
+        }
+        setReportB(data);
+        setReportBId(id);
+        setReportBLang(language);
+        if (!opts.skipUrl) {
+          const cur = readUrl();
+          writeUrl({ ...cur, cmp: id, cmpLang: language });
+        }
+      } catch (e) {
+        setErrorB(`fetch failed: ${(e as Error).message}`);
+      } finally {
+        setLoadingB(false);
       }
-      setReportB(data);
-      setReportBId(id);
-      setReportBLang(language);
-      if (!opts.skipUrl) {
-        const cur = readUrl();
-        writeUrl({ ...cur, cmp: id, cmpLang: language });
-      }
-    } catch (e) {
-      setErrorB(`fetch failed: ${(e as Error).message}`);
-    } finally {
-      setLoadingB(false);
-    }
-  }, []);
+    },
+    [],
+  );
 
   const swapAB = useCallback(() => {
     if (!reportB) return;
@@ -206,7 +217,13 @@ function PageInner() {
       setReportBLang(oldALang);
     }
     const cur = readUrl();
-    writeUrl({ ...cur, id: reportB.datas.diagnosis.id, lang: reportBLang, cmp: oldAId, cmpLang: oldALang });
+    writeUrl({
+      ...cur,
+      id: reportB.datas.diagnosis.id,
+      lang: reportBLang,
+      cmp: oldAId,
+      cmpLang: oldALang,
+    });
   }, [report, reportB, reportId, lang, reportBLang]);
 
   const clearCompare = useCallback(() => {
@@ -219,7 +236,38 @@ function PageInner() {
     writeUrl(cur);
   }, []);
 
-  // URL sync for direction / image-stack state
+  // Initial load — once we've parsed the URL.
+  useEffect(() => {
+    if (!initialRead.current) return;
+    const p = readUrl();
+    let cancel = false;
+    async function go() {
+      if (p.id && p.id !== SAMPLE_ID) {
+        await loadLive(p.id, p.lang ?? "en", { skipUrl: true });
+      } else {
+        try {
+          const r = await fetch("/sample-report.json");
+          const data: ReportPayload = await r.json();
+          if (cancel) return;
+          setReport(data);
+          setSource("sample");
+          setReportId(data.datas.diagnosis.id);
+        } catch {
+          // Empty state will surface explicitly via no-report below.
+        }
+      }
+      if (p.cmp) {
+        loadCompare(p.cmp, p.cmpLang ?? "en", { skipUrl: true });
+      }
+    }
+    go();
+    return () => {
+      cancel = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // URL sync for direction / image-stack / view
   useEffect(() => {
     if (!initialRead.current) return;
     const cur = readUrl();
@@ -230,100 +278,116 @@ function PageInner() {
       .map(([k, v]) => `${k}:${v.opacity.toFixed(2)}`);
     if (enabled.length) cur.layers = enabled.join(",");
     else delete cur.layers;
+    if (view !== "report") cur.view = view;
+    else delete cur.view;
     writeUrl(cur);
-  }, [direction, baseField, overlays]);
+  }, [direction, baseField, overlays, view]);
 
   const faces = useMemo(() => {
     if (!report) return [];
-    return [...report.datas.diagnosis.diagnosisSkinList].sort((a, b) => a.direction - b.direction);
+    return [...report.datas.diagnosis.diagnosisSkinList].sort(
+      (a, b) => a.direction - b.direction,
+    );
   }, [report]);
 
-  const currentFace = useMemo(() => {
-    return faces.find((f) => f.direction === direction) ?? faces[0];
-  }, [faces, direction]);
+  const dirScores = useMemo(() => {
+    const out: Record<Direction, number | null> = { left: null, front: null, right: null };
+    for (const f of faces) {
+      const k = NUM_TO_DIR[f.direction as -1 | 0 | 1];
+      out[k] = Math.round(numField(f, "skinScore") * 100);
+    }
+    return out;
+  }, [faces]);
 
-  const frontFace = useMemo(() => faces.find((f) => f.direction === 0) ?? null, [faces]);
+  const compositeScore = useMemo(() => {
+    if (!report) return null;
+    return Math.round((report.datas.diagnosis.skinScore ?? 0) * 100);
+  }, [report]);
 
+  // No report → empty state.
   if (!report) {
     return (
-      <div className="min-h-screen flex items-center justify-center text-white/60">
-        {error ?? "Loading sample report…"}
+      <div className="flex-1 flex flex-col" style={{ minHeight: "100vh" }}>
+        <NavBar
+          active={view}
+          onChange={setView}
+          right={<StatusPill state="live" />}
+        />
+        <EmptyScreen
+          onSubmit={(id, l) => loadLive(id, l)}
+          onSample={loadSample}
+          loading={loading}
+          error={error}
+        />
       </div>
     );
   }
 
+  const cus = report.datas.customer;
+  const diag = report.datas.diagnosis;
+  const isStale = source === "sample";
+
   return (
-    <div className="min-h-screen pb-12">
-      <Header
-        customer={report.datas.customer}
-        diagnosis={report.datas.diagnosis}
-        reportId={reportId}
-        lang={lang}
-        source={source}
-        onLoadId={loadLive}
-        onLoadSample={loadSample}
-        loading={loading}
+    <div className="flex-1 flex flex-col" style={{ minHeight: "100vh" }}>
+      <NavBar active={view} onChange={setView} />
+      <ReportHeader
+        name={cus.cusName || "Subject"}
+        subject={`${diag.deviceNo ?? "MC-?"} · ${cus.gender === 1 ? "M" : cus.gender === 0 ? "F" : "—"}${
+          cus.birthday ? ` · ${ageFromBirthday(cus.birthday) ?? "—"}` : ""
+        }`}
+        captured={diag.createTime ?? "—"}
+        composite={compositeScore}
+        mode={
+          <DirSeg
+            value={NUM_TO_DIR[direction]}
+            onChange={(d) => setDirection(DIR_TO_NUM[d])}
+            scores={dirScores}
+          />
+        }
+        modeRight={
+          <>
+            <StatusPill state={isStale ? "stale" : "live"} age={isStale ? "sample" : undefined} />
+            <PillBtn sm onClick={() => setView("compare")}>
+              Compare
+            </PillBtn>
+            <PillBtn sm onClick={loadSample}>
+              Reset
+            </PillBtn>
+          </>
+        }
       />
 
       {error && (
-        <div className="max-w-[1600px] mx-auto px-4 mt-3 text-xs text-rose-300 bg-rose-500/10 border border-rose-500/30 rounded px-3 py-2">{error}</div>
+        <div
+          className="mx-7 mt-3"
+          style={{
+            fontSize: 12,
+            color: "var(--rose)",
+            background: "var(--rose-soft)",
+            border: "1px solid color-mix(in oklch, var(--rose) 25%, transparent)",
+            borderRadius: 4,
+            padding: "8px 12px",
+          }}
+        >
+          {error}
+        </div>
       )}
 
-      <main className="max-w-[1600px] mx-auto px-4 py-4 space-y-4">
-        {/* direction picker */}
-        <div className="flex flex-wrap items-center gap-2 text-xs">
-          <span className="text-white/50">Direction:</span>
-          {faces.map((f) => (
-            <button
-              key={f.id}
-              onClick={() => setDirection(f.direction)}
-              className={`px-3 py-1 rounded-full border transition ${
-                f.direction === direction
-                  ? "bg-cyan-500/25 border-cyan-400/50 text-cyan-100"
-                  : "border-white/10 hover:bg-white/5 text-white/70"
-              }`}
-            >
-              {DIRECTION_NAME[f.direction]}
-              <span className="ml-1.5 text-[10px] text-white/40">{Math.round(f.skinScore * 100)}</span>
-            </button>
-          ))}
-          <span className="ml-auto text-white/40">
-            Captured: <span className="font-mono">{report.datas.diagnosis.directions}</span> (front | right | left bitmask)
-          </span>
-        </div>
-
-        {/* current-direction metric strip */}
-        <MetricStrip face={currentFace} />
-
-        {/* main split: image viewer + analysis panels */}
-        <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1.4fr)_minmax(380px,1fr)] gap-4">
-          <ImageStack
-            key={currentFace.id}
-            face={currentFace}
-            initialBase={baseField}
-            initialOverlays={overlays}
-            onChange={(s) => {
-              setBaseField(s.baseField);
-              setOverlays(s.overlays);
-            }}
-          />
-          <div className="space-y-4">
-            <RadarChart faces={faces} />
-            {frontFace && <WrinkleFaceMap face={frontFace} />}
-            <AsymmetryView faces={faces} />
-          </div>
-        </div>
-
-        {/* Aging morph (only if front face has the assets) */}
-        {frontFace && frontFace.jsonAging && frontFace.imgDaylight && (
-          <AgingMorph face={frontFace} />
-        )}
-
-        {/* full-width severity matrix */}
-        <SeverityMatrix faces={faces} />
-
-        {/* Compare to another report */}
-        <ComparePanel
+      {view === "report" && (
+        <ReportScreen
+          report={report}
+          direction={direction}
+          baseField={baseField}
+          overlays={overlays}
+          onImageStackChange={(s) => {
+            setBaseField(s.baseField);
+            setOverlays(s.overlays);
+          }}
+        />
+      )}
+      {view === "substrate" && <SubstrateScreen />}
+      {view === "compare" && (
+        <CompareScreen
           a={report}
           b={reportB}
           loading={loadingB}
@@ -333,25 +397,56 @@ function PageInner() {
           onSwap={swapAB}
           onClear={clearCompare}
         />
+      )}
+      {view === "roi" && <RoiScreen />}
+      {view === "plan" && <PlanScreen />}
 
-        {report.datas.symptomDescList.length > 0 && (
-          <AdviceCards list={report.datas.symptomDescList} />
-        )}
-
-        <RawInspector data={report} />
-
-        <footer className="text-[10px] text-white/30 py-4 border-t border-white/5">
-          Data sourced via <span className="font-mono">/meicepro-api/open/diagnosis/get/{reportId}/{lang}</span> · proxied through{" "}
-          <span className="font-mono">/api/report/[id]</span> · images via <span className="font-mono">/api/img</span>
-        </footer>
-      </main>
+      <footer
+        className="px-7 py-4"
+        style={{
+          fontSize: 10.5,
+          color: "var(--faint)",
+          borderTop: "1px solid var(--hairline-2)",
+          marginTop: "auto",
+        }}
+      >
+        Data via{" "}
+        <span className="font-mono-fine" style={{ color: "var(--muted)" }}>
+          /meicepro-api/open/diagnosis/get/{reportId}/{lang}
+        </span>{" "}
+        · proxied through{" "}
+        <span className="font-mono-fine" style={{ color: "var(--muted)" }}>
+          /api/report/[id]
+        </span>{" "}
+        · images via{" "}
+        <span className="font-mono-fine" style={{ color: "var(--muted)" }}>
+          /api/img
+        </span>
+      </footer>
     </div>
   );
 }
 
+function ageFromBirthday(s: string): number | null {
+  if (!s) return null;
+  const d = new Date(s.replace(" ", "T"));
+  if (isNaN(d.getTime())) return null;
+  const diff = Date.now() - d.getTime();
+  return Math.floor(diff / (365.25 * 24 * 3600 * 1000));
+}
+
 export default function Page() {
   return (
-    <Suspense fallback={<div className="min-h-screen flex items-center justify-center text-white/60">Loading…</div>}>
+    <Suspense
+      fallback={
+        <div
+          className="flex items-center justify-center"
+          style={{ minHeight: "100vh", color: "var(--muted)" }}
+        >
+          Loading…
+        </div>
+      }
+    >
       <PageInner />
     </Suspense>
   );

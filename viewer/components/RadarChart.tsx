@@ -56,7 +56,7 @@ export default function RadarChart({ faces }: Props) {
   return (
     <div className="panel p-4 relative">
       <div className="flex items-center justify-between mb-2">
-        <h3 className="text-sm font-medium text-white/80">Skin analysis radar</h3>
+        <h3 className="text-sm font-medium text-[var(--ink)]">Skin analysis radar</h3>
         <div className="flex gap-2 text-[11px]">
           {faces.map((f) => (
             <span key={f.id} className="flex items-center gap-1">
@@ -82,7 +82,7 @@ export default function RadarChart({ faces }: Props) {
               key={lvl}
               points={points}
               fill="none"
-              stroke="rgba(148,196,217,0.12)"
+              stroke="var(--hairline)"
               strokeWidth="1"
             />
           );
@@ -96,14 +96,14 @@ export default function RadarChart({ faces }: Props) {
           const ly = cy + Math.sin(a) * (radius + 18);
           return (
             <g key={m.key}>
-              <line x1={cx} y1={cy} x2={x} y2={y} stroke="rgba(148,196,217,0.1)" />
+              <line x1={cx} y1={cy} x2={x} y2={y} stroke="var(--hairline-2)" />
               <text
                 x={lx}
                 y={ly}
                 textAnchor="middle"
                 dominantBaseline="middle"
                 fontSize="10"
-                fill={hover === m.key ? "#a5f3fc" : "rgba(230,240,245,0.7)"}
+                fill={hover === m.key ? "var(--teal)" : "var(--ink-2)"}
                 onMouseEnter={() => showTip(m.key, m.label)}
                 onMouseLeave={() => { setHover(null); setTip(null); }}
                 style={{ cursor: "default" }}
@@ -149,7 +149,7 @@ export default function RadarChart({ faces }: Props) {
       {/* tooltip */}
       {tip && (
         <div className="absolute right-4 top-12 panel-2 px-3 py-2 text-xs pointer-events-none z-10">
-          <div className="text-white/80 font-medium mb-1">{tip.label}</div>
+          <div className="text-[var(--ink)] font-medium mb-1">{tip.label}</div>
           {tip.rows.map((r, i) => (
             <div key={i} className="flex justify-between gap-3">
               <span style={{ color: r.color }}>{r.face}</span>
@@ -169,11 +169,11 @@ export default function RadarChart({ faces }: Props) {
           return (
             <div
               key={m.key}
-              className={`flex justify-between gap-2 px-2 py-0.5 rounded ${hover === m.key ? "bg-white/5" : ""}`}
+              className={`flex justify-between gap-2 px-2 py-0.5 rounded ${hover === m.key ? "bg-[var(--surface-alt)]" : ""}`}
               onMouseEnter={() => showTip(m.key, m.label)}
               onMouseLeave={() => { setHover(null); setTip(null); }}
             >
-              <span className="text-white/70">{m.label}</span>
+              <span className="text-[var(--ink-2)]">{m.label}</span>
               <span className="font-mono flex gap-2">
                 {vals.map((v) => (
                   <span key={v.d} style={{ color: FACE_COLORS[v.d as -1 | 0 | 1].stroke }}>

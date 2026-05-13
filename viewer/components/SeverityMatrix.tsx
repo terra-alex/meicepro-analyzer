@@ -49,13 +49,13 @@ export default function SeverityMatrix({ faces }: Props) {
   return (
     <div className="panel p-4">
       <div className="flex justify-between items-center mb-3">
-        <h3 className="text-sm font-medium text-white/80">Severity matrix</h3>
-        <span className="text-[10px] text-white/40">cell = count · area-ratio % of face · colour scaled per symptom row-group</span>
+        <h3 className="text-sm font-medium text-[var(--ink)]">Severity matrix</h3>
+        <span className="text-[10px] text-[var(--faint)]">cell = count · area-ratio % of face · colour scaled per symptom row-group</span>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-xs">
           <thead>
-            <tr className="text-[10px] text-white/40 uppercase">
+            <tr className="text-[10px] text-[var(--faint)] uppercase">
               <th className="text-left font-normal py-1 pr-2">Symptom</th>
               <th className="text-left font-normal py-1 pr-2">Severity</th>
               <th className="text-right font-normal py-1 px-2">Left</th>
@@ -71,7 +71,7 @@ export default function SeverityMatrix({ faces }: Props) {
               const symMax = maxBySymptom.get(sym) ?? 0.001;
               return (
                 <Fragment key={sym}>
-                  <tr className="text-cyan-300/90">
+                  <tr className="text-[var(--teal)]/90">
                     <td colSpan={6} className="pt-3 pb-1 text-[11px] font-medium">
                       {sym} — {SYMPTOM_LABEL[sym] ?? "Unknown"}
                     </td>
@@ -81,15 +81,15 @@ export default function SeverityMatrix({ faces }: Props) {
                     const labels = isWrinkle ? DEGREE_LABEL_WRINKLE : DEGREE_LABEL_DEFAULT;
                     return (
                       <tr key={`${sym}-${r.level}`} className="border-t border-white/5">
-                        <td className="py-0.5 pr-2 text-white/30">└</td>
-                        <td className="py-0.5 pr-2 text-white/70">
+                        <td className="py-0.5 pr-2 text-[var(--faint)]">└</td>
+                        <td className="py-0.5 pr-2 text-[var(--ink-2)]">
                           <span className="kbd mr-1">{r.level}</span>
                           {labels[r.level] ?? `Level ${r.level}`}
                         </td>
                         {([-1, 0, 1] as const).map((d) => {
                           const c = r.cells[d];
                           if (!c || c.counts === 0) {
-                            return <td key={d} className="py-0.5 px-2 text-right text-white/20">—</td>;
+                            return <td key={d} className="py-0.5 px-2 text-right text-[var(--faint)]">—</td>;
                           }
                           const intensity = Math.min(1, c.areaRatio / symMax);
                           return (
@@ -98,13 +98,13 @@ export default function SeverityMatrix({ faces }: Props) {
                                 style={{ background: `rgba(34,211,238,${0.05 + intensity * 0.45})` }}
                                 title={`area=${c.area.toFixed(0)}px²  ratio=${(c.areaRatio * 100).toFixed(2)}%`}
                               >
-                                <span className="font-mono text-[11px] text-white/90">{c.counts}</span>
-                                <span className="font-mono text-[10px] text-white/50">{(c.areaRatio * 100).toFixed(1)}%</span>
+                                <span className="font-mono text-[11px] text-[var(--ink)]">{c.counts}</span>
+                                <span className="font-mono text-[10px] text-[var(--muted)]">{(c.areaRatio * 100).toFixed(1)}%</span>
                               </div>
                             </td>
                           );
                         })}
-                        <td className="py-0.5 pl-2 text-right font-mono text-white/60">{total}</td>
+                        <td className="py-0.5 pl-2 text-right font-mono text-[var(--muted)]">{total}</td>
                       </tr>
                     );
                   })}

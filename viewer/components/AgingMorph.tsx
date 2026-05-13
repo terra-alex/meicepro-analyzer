@@ -147,8 +147,8 @@ export default function AgingMorph({ face }: Props) {
   if (!imgUrl || !meshUrl) {
     return (
       <div className="panel p-4">
-        <h3 className="text-sm font-medium text-white/80 mb-1">Aging morph</h3>
-        <p className="text-xs text-white/50">
+        <h3 className="text-sm font-medium text-[var(--ink)] mb-1">Aging morph</h3>
+        <p className="text-xs text-[var(--muted)]">
           Front face required (needs both <span className="font-mono">imgDaylight</span> and <span className="font-mono">jsonAging</span>).
         </p>
       </div>
@@ -158,9 +158,9 @@ export default function AgingMorph({ face }: Props) {
   return (
     <div className="panel p-4">
       <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
-        <h3 className="text-sm font-medium text-white/80">Aging morph (predicted)</h3>
-        {error && <span className="text-[10px] text-rose-300">{error}</span>}
-        <div className="flex items-center gap-2 text-xs text-white/60">
+        <h3 className="text-sm font-medium text-[var(--ink)]">Aging morph (predicted)</h3>
+        {error && <span className="text-[10px] text-[var(--rose)]">{error}</span>}
+        <div className="flex items-center gap-2 text-xs text-[var(--muted)]">
           <span>Now</span>
           <input
             type="range" min={0} max={100} value={Math.round(t * 100)}
@@ -172,7 +172,7 @@ export default function AgingMorph({ face }: Props) {
           <button
             type="button"
             onClick={() => setT(t === 0 ? 1 : 0)}
-            className="ml-1 px-2 py-0.5 rounded border border-white/10 hover:bg-white/5 text-[10px]"
+            className="ml-1 px-2 py-0.5 rounded border border-[var(--hairline)] hover:bg-[var(--surface-alt)] text-[10px]"
           >
             {t === 0 ? "Skip to aged" : "Reset"}
           </button>
@@ -184,7 +184,7 @@ export default function AgingMorph({ face }: Props) {
         <div className="panel-2 relative aspect-[9/16] overflow-hidden">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={imgUrl} alt="now" className="absolute inset-0 w-full h-full object-contain" />
-          <span className="absolute left-2 top-2 text-[10px] px-1.5 py-0.5 rounded bg-black/50 text-white/80">Now</span>
+          <span className="absolute left-2 top-2 text-[10px] px-1.5 py-0.5 rounded bg-black/50 text-[var(--ink)]">Now</span>
         </div>
         {/* Morphed canvas */}
         <div className="panel-2 relative aspect-[9/16] overflow-hidden flex items-center justify-center">
@@ -193,13 +193,13 @@ export default function AgingMorph({ face }: Props) {
             className="absolute inset-0 w-full h-full object-contain"
             style={{ objectFit: "contain" }}
           />
-          <span className="absolute left-2 top-2 text-[10px] px-1.5 py-0.5 rounded bg-amber-500/40 text-amber-100">Aged + {Math.round(t * 100)}%</span>
-          {!imgReady && <span className="text-xs text-white/50">loading source image…</span>}
-          {imgReady && !mesh && !error && <span className="text-xs text-white/50">loading mesh…</span>}
+          <span className="absolute left-2 top-2 text-[10px] px-1.5 py-0.5 rounded bg-[var(--amber-soft)] text-[var(--amber)]">Aged + {Math.round(t * 100)}%</span>
+          {!imgReady && <span className="text-xs text-[var(--muted)]">loading source image…</span>}
+          {imgReady && !mesh && !error && <span className="text-xs text-[var(--muted)]">loading mesh…</span>}
         </div>
       </div>
 
-      <div className="text-[10px] text-white/40 mt-2">
+      <div className="text-[10px] text-[var(--faint)] mt-2">
         {mesh ? `${mesh.start_pts.length} landmarks · ${mesh.tri_idx.length} triangles · padding ${mesh.padding}px (informational)` : "—"}
       </div>
     </div>

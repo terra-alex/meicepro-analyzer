@@ -20,7 +20,7 @@ export default function AdviceCards({ list }: Props) {
 
   return (
     <div className="panel p-4">
-      <h3 className="text-sm font-medium text-white/80 mb-3">Advice (per symptom)</h3>
+      <h3 className="text-sm font-medium text-[var(--ink)] mb-3">Advice (per symptom)</h3>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
         {items.map((s) => {
           const isOpen = open[s.symptom];
@@ -34,19 +34,19 @@ export default function AdviceCards({ list }: Props) {
                   <span className="kbd mr-2">{s.symptom}</span>
                   {SYMPTOM_LABEL[s.symptom] ?? "Unknown"}
                 </span>
-                <span className="text-xs text-white/40">{isOpen ? "−" : "+"}</span>
+                <span className="text-xs text-[var(--faint)]">{isOpen ? "−" : "+"}</span>
               </button>
               {isOpen && (
-                <div className="mt-2 text-xs text-white/70 space-y-2">
+                <div className="mt-2 text-xs text-[var(--ink-2)] space-y-2">
                   {s.reason && (
                     <div>
-                      <div className="text-[10px] uppercase tracking-wider text-white/40 mb-0.5">Reason</div>
+                      <div className="text-[10px] uppercase tracking-wider text-[var(--faint)] mb-0.5">Reason</div>
                       <p className="whitespace-pre-line leading-snug">{s.reason}</p>
                     </div>
                   )}
                   {s.advise && (
                     <div>
-                      <div className="text-[10px] uppercase tracking-wider text-white/40 mb-0.5">Advice</div>
+                      <div className="text-[10px] uppercase tracking-wider text-[var(--faint)] mb-0.5">Advice</div>
                       <p className="whitespace-pre-line leading-snug">{s.advise}</p>
                     </div>
                   )}

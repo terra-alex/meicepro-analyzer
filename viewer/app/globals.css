@@ -1,56 +1,145 @@
 @import "tailwindcss";
 
+/* ─────────────────────────────────────────────────────────────────
+ * Meicepro viewer — warm bone palette, restrained type, hairline
+ * detail. Apple Health × clinical PDF.
+ * Tokens mirror the design-handoff shared.jsx exactly.
+ * ──────────────────────────────────────────────────────────────── */
+
 :root {
-  --background: #05121b;
-  --foreground: #e6f0f5;
-  --panel: #0a1f2c;
-  --panel-2: #0d2737;
-  --border: #163749;
-  --accent: #4dd0e1;
+  /* surfaces */
+  --bg: #F1ECDF;
+  --surface: #FBF8F1;
+  --surface-alt: #F6F1E5;
+  --ink: #1C1A17;
+  --ink-2: #3A352E;
+  --muted: #857E72;
+  --faint: #B8B0A1;
+  --hairline: #E4DCC9;
+  --hairline-2: #EDE6D6;
+
+  /* accents */
+  --teal: oklch(0.52 0.06 200);
+  --teal-soft: oklch(0.94 0.025 200);
+  --clay: oklch(0.58 0.10 50);
+  --clay-soft: oklch(0.94 0.04 60);
+
+  /* status — low chroma */
+  --sage: oklch(0.58 0.06 150);
+  --sage-soft: oklch(0.94 0.035 150);
+  --amber: oklch(0.66 0.10 75);
+  --amber-soft: oklch(0.94 0.05 80);
+  --rose: oklch(0.58 0.10 25);
+  --rose-soft: oklch(0.94 0.04 25);
+
+  /* legacy aliases for existing components */
+  --background: var(--bg);
+  --foreground: var(--ink);
+  --panel: var(--surface);
+  --panel-2: var(--surface-alt);
+  --border: var(--hairline);
+  --accent: var(--teal);
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  --color-background: var(--bg);
+  --color-foreground: var(--ink);
+  --color-surface: var(--surface);
+  --color-surface-alt: var(--surface-alt);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-muted: var(--muted);
+  --color-faint: var(--faint);
+  --color-hairline: var(--hairline);
+  --color-hairline-2: var(--hairline-2);
+  --color-teal: var(--teal);
+  --color-teal-soft: var(--teal-soft);
+  --color-clay: var(--clay);
+  --color-clay-soft: var(--clay-soft);
+  --color-sage: var(--sage);
+  --color-sage-soft: var(--sage-soft);
+  --color-amber: var(--amber);
+  --color-amber-soft: var(--amber-soft);
+  --color-rose: var(--rose);
+  --color-rose-soft: var(--rose-soft);
   --color-panel: var(--panel);
   --color-panel-2: var(--panel-2);
   --color-border: var(--border);
   --color-accent: var(--accent);
+
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --font-serif: var(--font-instrument-serif);
 }
 
-html, body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: var(--font-geist-sans), Arial, sans-serif;
+html,
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
   font-feature-settings: "tnum", "ss01";
 }
 
-::-webkit-scrollbar { width: 8px; height: 8px; }
-::-webkit-scrollbar-thumb { background: rgba(148, 196, 217, 0.18); border-radius: 8px; }
-::-webkit-scrollbar-track { background: transparent; }
+/* Soft radial wash on the page background — matches the prototype. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(900px 700px at 20% 0%, rgba(255, 255, 255, 0.40), transparent 60%),
+    radial-gradient(900px 700px at 100% 100%, rgba(180, 150, 90, 0.10), transparent 60%);
+  pointer-events: none;
+  z-index: 0;
+}
 
+body > * {
+  position: relative;
+  z-index: 1;
+}
+
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--hairline); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--faint); }
+
+/* Editorial display type. */
+.font-serif-display {
+  font-family: var(--font-instrument-serif), "Times New Roman", serif;
+  font-weight: 400;
+  letter-spacing: -0.015em;
+}
+
+.font-mono-fine {
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-feature-settings: "tnum";
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Legacy panel utilities preserved while we migrate older components. */
 .panel {
-  background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: 12px;
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  border-radius: 6px;
 }
 .panel-2 {
-  background: var(--panel-2);
-  border: 1px solid var(--border);
-  border-radius: 10px;
+  background: var(--surface-alt);
+  border: 1px solid var(--hairline);
+  border-radius: 6px;
 }
 .kbd {
   font-family: var(--font-geist-mono), monospace;
-  font-size: 11px;
+  font-size: 10px;
   padding: 1px 6px;
-  border-radius: 4px;
-  background: rgba(255,255,255,0.06);
-  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 3px;
+  background: var(--surface-alt);
+  border: 1px solid var(--hairline);
+  color: var(--muted);
 }
 
-/* Allow stacked images to multiply / screen onto the base layer */
+/* Layer blends used by the existing image stack. */
 .layer-blend-screen { mix-blend-mode: screen; }
 .layer-blend-multiply { mix-blend-mode: multiply; }
 .layer-blend-normal { mix-blend-mode: normal; }
