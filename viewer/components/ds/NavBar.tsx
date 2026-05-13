@@ -2,13 +2,22 @@
 
 import { t } from "./tokens";
 
-export type ViewKey = "report" | "substrate" | "compare" | "roi" | "plan";
+export type ViewKey =
+  | "report"
+  | "substrate"
+  | "compare"
+  | "roi"
+  | "bloodwork"
+  | "plan";
+
+const SOON: ReadonlySet<ViewKey> = new Set<ViewKey>(["bloodwork", "plan"]);
 
 const NAV_ITEMS: { key: ViewKey; label: string }[] = [
   { key: "report", label: "Report" },
   { key: "substrate", label: "Substrate" },
   { key: "compare", label: "Compare" },
   { key: "roi", label: "ROI" },
+  { key: "bloodwork", label: "Bloodwork" },
   { key: "plan", label: "Plan" },
 ];
 
@@ -68,6 +77,21 @@ export function NavBar({
               }}
             >
               {it.label}
+              {SOON.has(it.key) && (
+                <span
+                  className="font-mono-fine"
+                  style={{
+                    marginLeft: 6,
+                    fontSize: 8.5,
+                    letterSpacing: "0.08em",
+                    color: t.clay,
+                    textTransform: "uppercase",
+                    fontWeight: 600,
+                  }}
+                >
+                  soon
+                </span>
+              )}
               {isActive && (
                 <span
                   className="absolute left-3 right-3 -bottom-[13px] h-0.5"
@@ -143,6 +167,16 @@ export function MNavBar({
         <circle cx="2" cy="4" r="0.8" fill="currentColor" />
         <circle cx="2" cy="8" r="0.8" fill="currentColor" />
         <circle cx="2" cy="12" r="0.8" fill="currentColor" />
+      </svg>
+    ),
+    bloodwork: (
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+        <path
+          d="M8 2 C5.5 5 4 7 4 9.5 a4 4 0 0 0 8 0 C12 7 10.5 5 8 2 Z"
+          stroke="currentColor"
+          strokeWidth="1.2"
+          strokeLinejoin="round"
+        />
       </svg>
     ),
   };

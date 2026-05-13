@@ -85,7 +85,7 @@ export function EmptyScreen({
               <input
                 value={id}
                 onChange={(e) => setId(e.target.value)}
-                placeholder="paste a UUID, e.g. 4b6f68e4-d6fc-4fac-87b4-…"
+                placeholder="paste a diagnosis UUID"
                 className="font-mono-fine flex-1"
                 style={{
                   padding: "11px 14px",

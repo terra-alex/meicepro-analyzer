@@ -4,3 +4,5 @@ export { SubstrateScreen } from "./SubstrateScreen";
 export { CompareScreen } from "./CompareScreen";
 export { RoiScreen } from "./RoiScreen";
 export { PlanScreen } from "./PlanScreen";
+export { BloodworkScreen } from "./BloodworkScreen";
+export { ComingSoonScreen } from "./ComingSoonScreen";
